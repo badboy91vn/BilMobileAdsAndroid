@@ -25,7 +25,7 @@ public final class Constants {
     // MARK: - URL Prefix
     public static final String URL_PREFIX = "https://app-services.vliplatform.com"; // "http://10.0.2.2:8000/";
     // API
-    public static final String GET_DATA_CONFIG = "/getAdunitConfig";
+    public static final String GET_DATA_CONFIG = "/getAdunitConfig?adUnitId=";
 
     private Constants() {
 

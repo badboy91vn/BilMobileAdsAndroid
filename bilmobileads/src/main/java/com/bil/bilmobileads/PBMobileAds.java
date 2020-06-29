@@ -92,8 +92,7 @@ public class PBMobileAds {
     private void getADConfig() {
         this.log("Start Request Config");
 
-        HttpApi httpApi = new HttpApi<JSONObject>(Constants.GET_DATA_CONFIG
-                + "?appId=" + this.configId, new ResultCallback<JSONObject, Exception>() {
+        HttpApi httpApi = new HttpApi<JSONObject>(Constants.GET_DATA_CONFIG + this.configId, new ResultCallback<JSONObject, Exception>() {
             @Override
             public void success(JSONObject dataJSON) {
 //                log("Data: " + dataJSON.toString());
