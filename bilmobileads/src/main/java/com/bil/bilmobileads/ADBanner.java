@@ -91,8 +91,6 @@ public class ADBanner {
                         PBMobileAds.getInstance().log(error.getLocalizedMessage());
                     }
                 });
-            } else {
-                this.load();
             }
         }
     }
