@@ -39,23 +39,11 @@ public class PBMobileAds {
 
     // MARK: api
     boolean isLog = true;
-    boolean isConfigSucc = false;
-    TimerRecall timerRecall;
 
     private String pbServerEndPoint = "";
-    private String configId;
-
 
     private PBMobileAds() {
         this.log("PBMobileAds Init");
-
-        timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000);
-        timerRecall.setListener(new TimerCompleteListener() {
-            @Override
-            public void doWork() {
-                getADConfig();
-            }
-        });
     }
 
     public static PBMobileAds getInstance() {
@@ -63,25 +51,15 @@ public class PBMobileAds {
     }
 
     // MARK: - initialize
-    public void initialize(Context context, String configId, boolean testMode) {
-//      if !isLog { PrebidMobile.logLevel = .error }
-
+    public void initialize(Context context) {
+        //  if !isLog { PrebidMobile.logLevel = .error }
         this.contextApp = context;
 
-        this.configId = configId;
-
-        //Declare in init to the user agent could be passed in first call
+        // Declare in init to the user agent could be passed in first call
         PrebidMobile.setShareGeoLocation(true);
         PrebidMobile.setApplicationContext(context);
         WebView obj = new WebView(context);
         obj.clearCache(true);
-
-        // Setup Test Mode
-        if (testMode == true) {
-//            GADMobileAds.sharedInstance().requestConfiguration.testDeviceIdentifiers =  [ (kGADSimulatorID as! String), "cc7ca766f86b43ab6cdc92bed424069b"];
-        }
-
-        getADConfig();
     }
 
     public Context getContextApp() {
@@ -89,65 +67,55 @@ public class PBMobileAds {
     }
 
     // MARK: - Call API AD
-    private void getADConfig() {
-        this.log("Start Request Config");
+    void getADConfig(final String adUnit, final ResultCallback resultAD) {
+        this.log("Start Request Config adUnit: " + adUnit);
+        final TimerRecall timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000);
+        timerRecall.setListener(new TimerCompleteListener() {
+            @Override
+            public void doWork() {
+                getADConfig(adUnit, resultAD);
+            }
+        });
 
-        HttpApi httpApi = new HttpApi<JSONObject>(Constants.GET_DATA_CONFIG + this.configId, new ResultCallback<JSONObject, Exception>() {
+        HttpApi httpApi = new HttpApi<JSONObject>(Constants.GET_DATA_CONFIG + adUnit, new ResultCallback<JSONObject, Exception>() {
             @Override
             public void success(JSONObject dataJSON) {
-//                log("Data: " + dataJSON.toString());
-
                 timerRecall.cancel();
-                isConfigSucc = true;
                 try {
                     pbServerEndPoint = dataJSON.getString("pbServerEndPoint");
-                    JSONArray adunitArray = dataJSON.getJSONArray("adunit");
 
                     // Set all ad type config
-                    for (int i = 0; i < adunitArray.length(); i++) {
-                        JSONObject adunitJsonObj = adunitArray.getJSONObject(i);
+                    JSONObject adunitJsonObj = dataJSON.getJSONObject("adunit");
 
-                        String placement = adunitJsonObj.getString("placement");
-                        String type = adunitJsonObj.getString("type");
-                        ADFormat defaultType = adunitJsonObj.getString("defaultType").equalsIgnoreCase(ADFormat.HTML.toString()) ? ADFormat.HTML : ADFormat.VAST;
-                        boolean isActive = adunitJsonObj.getBoolean("isActive");
+                    String placement = adunitJsonObj.getString("placement");
+                    String type = adunitJsonObj.getString("type");
+                    ADFormat defaultType = adunitJsonObj.getString("defaultType").equalsIgnoreCase(ADFormat.HTML.toString()) ? ADFormat.HTML : ADFormat.VAST;
+                    boolean isActive = adunitJsonObj.getBoolean("isActive");
 
-                        // Create AdInfor
-                        ArrayList<AdInfor> adInforList = new ArrayList<AdInfor>();
-                        JSONArray adInforArray = adunitJsonObj.getJSONArray("adInfor");
-                        for (int j = 0; j < adInforArray.length(); j++) {
-                            JSONObject adInforObj = adInforArray.getJSONObject(j);
-                            boolean isVideo = adInforObj.getBoolean("isVideo");
-                            String configId = adInforObj.getString("configId");
-                            String adUnitID = adInforObj.getString("adUnitID");
-                            // Create Host
-                            JSONObject hostObj = adInforObj.getJSONObject("host");
-                            String pbHost = hostObj.getString("pbHost");
-                            String pbAccountId = hostObj.getString("pbAccountId");
-                            String storedAuctionResponse = hostObj.getString("storedAuctionResponse");
-                            HostCustom hostCustom = new HostCustom(pbHost, pbAccountId, storedAuctionResponse);
+                    // Create AdInfor
+                    ArrayList<AdInfor> adInforList = new ArrayList<AdInfor>();
+                    JSONArray adInforArray = adunitJsonObj.getJSONArray("adInfor");
+                    for (int j = 0; j < adInforArray.length(); j++) {
+                        JSONObject adInforObj = adInforArray.getJSONObject(j);
+                        boolean isVideo = adInforObj.getBoolean("isVideo");
+                        String configId = adInforObj.getString("configId");
+                        String adUnitID = adInforObj.getString("adUnitID");
+                        // Create Host
+                        JSONObject hostObj = adInforObj.getJSONObject("host");
+                        String pbHost = hostObj.getString("pbHost");
+                        String pbAccountId = hostObj.getString("pbAccountId");
+                        String storedAuctionResponse = hostObj.getString("storedAuctionResponse");
+                        HostCustom hostCustom = new HostCustom(pbHost, pbAccountId, storedAuctionResponse);
 
-                            AdInfor adInfor = new AdInfor(isVideo, hostCustom, configId, adUnitID);
-                            adInforList.add(adInfor);
-                        }
-
-                        AdUnitObj adUnitObj = new AdUnitObj(placement, type, defaultType, isActive, adInforList);
-                        listAdUnitObj.add(adUnitObj);
+                        AdInfor adInfor = new AdInfor(isVideo, hostCustom, configId, adUnitID);
+                        adInforList.add(adInfor);
                     }
 
-                    // Call all ad init before
-                    log("Banner Count: " + listADBanner.size());
-                    for (ADBanner ad : listADBanner) {
-                        ad.load();
-                    }
-                    log("Full Count: " + listADIntersititial.size());
-                    for (ADInterstitial ad : listADIntersititial) {
-                        ad.preLoad();
-                    }
-                    log("Rewarded Count: " + listADRewarded.size());
-                    for (ADRewarded ad : listADRewarded) {
-                        ad.preLoad();
-                    }
+                    AdUnitObj adUnitObj = new AdUnitObj(placement, type, defaultType, isActive, adInforList);
+                    listAdUnitObj.add(adUnitObj);
+
+                    // Return result
+                    resultAD.success(adUnitObj);
                 } catch (JSONException e) {
                     e.printStackTrace();
                     PBMobileAds.getInstance().log(e.getLocalizedMessage());
@@ -162,10 +130,10 @@ public class PBMobileAds {
 
             @Override
             public void failure(Exception error) {
-                log("Err: " + error.getLocalizedMessage());
+                //  log("Err: " + error.getLocalizedMessage());
 
-                isConfigSucc = false;
                 timerRecall.start();
+                resultAD.failure(error);
             }
         });
         httpApi.execute();
@@ -196,10 +164,6 @@ public class PBMobileAds {
 
         PrebidMobile.setPrebidServerAccountId(hostCus.pbAccountId);
         PrebidMobile.setStoredAuctionResponse(hostCus.storedAuctionResponse);
-    }
-
-    public boolean isInitialize() {
-        return isConfigSucc;
     }
 
     public void enableCOPPA() {

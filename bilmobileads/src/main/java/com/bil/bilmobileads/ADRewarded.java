@@ -2,6 +2,7 @@ package com.bil.bilmobileads;
 
 import android.app.Activity;
 
+import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
 import com.google.android.gms.ads.rewarded.RewardItem;
 import com.google.android.gms.ads.rewarded.RewardedAd;
@@ -65,7 +66,26 @@ public class ADRewarded {
             }
         });
 
-        PBMobileAds.getInstance().listADRewarded.add(this);
+        // Get AdUnit
+        if (this.adUnitObj == null) {
+            this.adUnitObj = PBMobileAds.getInstance().getAdUnitObj(this.placement);
+            if (this.adUnitObj == null) {
+                PBMobileAds.getInstance().getADConfig(this.placement, new ResultCallback<AdUnitObj, Exception>() {
+                    @Override
+                    public void success(AdUnitObj data) {
+                        adUnitObj = data;
+                        preLoad();
+                    }
+
+                    @Override
+                    public void failure(Exception error) {
+                        PBMobileAds.getInstance().log(error.getLocalizedMessage());
+                    }
+                });
+            } else {
+                this.preLoad();
+            }
+        }
     }
 
     // MARK: - Preload + Load
@@ -120,22 +140,11 @@ public class ADRewarded {
     }
 
     public boolean preLoad() {
-        PBMobileAds.getInstance().log("PBMobileAds: " + PBMobileAds.getInstance().isInitialize() + " | isReady: " + this.isReady() + " |  isFetchingAD: " + this.isFetchingAD + " |  isRecallingPreload: " + this.isRecallingPreload);
-        if (PBMobileAds.getInstance().isInitialize() == false || this.isReady() == true
-                || this.isFetchingAD == true || this.isRecallingPreload == true) {
+        PBMobileAds.getInstance().log(" | isReady: " + this.isReady() + " |  isFetchingAD: " + this.isFetchingAD + " |  isRecallingPreload: " + this.isRecallingPreload);
+        if (this.adUnitObj == null || this.isReady() == true || this.isFetchingAD == true || this.isRecallingPreload == true) {
             return false;
         }
         PBMobileAds.getInstance().log("Preload Rewareded AD: " + this.placement);
-
-        // Get Data Config
-        if (this.adUnitObj == null) {
-            AdUnitObj adUnitO = PBMobileAds.getInstance().getAdUnitObj(this.placement);
-            if (adUnitO == null) {
-                PBMobileAds.getInstance().log("Placement is not exist");
-                return false;
-            }
-            this.adUnitObj = adUnitO;
-        }
 
         // Check Active
         if (!this.adUnitObj.isActive || this.adUnitObj.adInfor.size() <= 0) {

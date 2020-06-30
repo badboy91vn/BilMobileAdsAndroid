@@ -2,6 +2,7 @@ package com.bil.bilmobileads;
 
 import android.widget.FrameLayout;
 
+import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdSize;
@@ -46,7 +47,6 @@ public class ADBanner {
     private AdUnitObj adUnitObj;
 
     // MARK: - Properties
-//    private Anchor defaultAnchor;
     private ADFormat adFormatDefault;
     private AdSize curBannerSize;
     private int timeAutoRefresh = Constants.BANNER_AUTO_REFRESH_DEFAULT;
@@ -63,7 +63,7 @@ public class ADBanner {
 
         this.adView = adView;
         this.placement = placement;
-//        this.defaultAnchor = Anchor.Center;
+
         final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
         this.amRequest = builder.build();
 
@@ -75,7 +75,26 @@ public class ADBanner {
             }
         });
 
-        PBMobileAds.getInstance().listADBanner.add(this);
+        // Get AdUnit
+        if (this.adUnitObj == null) {
+            this.adUnitObj = PBMobileAds.getInstance().getAdUnitObj(this.placement);
+            if (this.adUnitObj == null) {
+                PBMobileAds.getInstance().getADConfig(this.placement, new ResultCallback<AdUnitObj, Exception>() {
+                    @Override
+                    public void success(AdUnitObj data) {
+                        adUnitObj = data;
+                        load();
+                    }
+
+                    @Override
+                    public void failure(Exception error) {
+                        PBMobileAds.getInstance().log(error.getLocalizedMessage());
+                    }
+                });
+            } else {
+                this.load();
+            }
+        }
     }
 
     // MARK: - Preload + Load
@@ -94,22 +113,11 @@ public class ADBanner {
     }
 
     public boolean load() {
-        PBMobileAds.getInstance().log("PBMobileAds: " + PBMobileAds.getInstance().isInitialize()
-                + " | isRunning: " + this.isLoaded() + " |  isRecallingPreload: " + this.isRecallingPreload);
-        if (PBMobileAds.getInstance().isInitialize() == false || this.isLoaded() == true || this.isRecallingPreload == true) {
+        PBMobileAds.getInstance().log(" | isRunning: " + this.isLoaded() + " |  isRecallingPreload: " + this.isRecallingPreload);
+        if (this.adUnitObj == null || this.isLoaded() == true || this.isRecallingPreload == true) {
             return false;
         }
         PBMobileAds.getInstance().log("Load Banner AD: " + this.placement);
-
-        // Get Data Config
-        if (this.adUnitObj == null) {
-            AdUnitObj adUnitO = PBMobileAds.getInstance().getAdUnitObj(this.placement);
-            if (adUnitO == null) {
-                PBMobileAds.getInstance().log("Placement is not exist");
-                return false;
-            }
-            this.adUnitObj = adUnitO;
-        }
 
         // Check Active
         if (!this.adUnitObj.isActive || this.adUnitObj.adInfor.size() <= 0) {
@@ -268,6 +276,9 @@ public class ADBanner {
             this.isLoadBannerSucc = false;
             this.adView.removeAllViews();
             this.amBanner.destroy();
+
+            this.timerRecall.cancel();
+            this.timerRecall = null;
         }
     }
 
