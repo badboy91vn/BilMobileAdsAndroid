@@ -38,6 +38,7 @@ public class PBMobileAds {
     ArrayList<ADRewarded> listADRewarded = new ArrayList<ADRewarded>();
 
     // MARK: api
+    boolean isTestMode = false;
     boolean isLog = true;
 
     private String pbServerEndPoint = "";
@@ -51,9 +52,10 @@ public class PBMobileAds {
     }
 
     // MARK: - initialize
-    public void initialize(Context context) {
+    public void initialize(Context context, boolean testMode) {
         //  if !isLog { PrebidMobile.logLevel = .error }
         this.contextApp = context;
+        this.isTestMode = testMode;
 
         // Declare in init to the user agent could be passed in first call
         PrebidMobile.setShareGeoLocation(true);

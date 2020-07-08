@@ -65,6 +65,9 @@ public class ADBanner {
         this.placement = placement;
 
         final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
+        if (PBMobileAds.getInstance().isTestMode) {
+            builder.addTestDevice("B3EEABB8EE11C2BE770B684D95219ECB");
+        }
         this.amRequest = builder.build();
 
         this.timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000, new TimerCompleteListener() {
