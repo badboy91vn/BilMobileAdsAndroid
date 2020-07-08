@@ -11,11 +11,21 @@
     }
 ```
 
-    
 #### Step 2: Add the dependency with latest version
 ```gradle
     dependencies {
         implementation 'com.github.badboy91vn:BilMobileAdsAndroid:1.0.8'
     }
 ```
-  
+
+#### Step 3: In Project Explorer go to Gradle Scripts > build.gradle (Module: app) and add the following lines to the android { ... } section:
+```gradle
+    android {
+        ...
+        compileOptions 
+        {
+         sourceCompatibility JavaVersion.VERSION_1_8
+         targetCompatibility JavaVersion.VERSION_1_8
+        }
+    }
+```
