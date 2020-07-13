@@ -1,8 +1,16 @@
 package com.bil.bilmobileads;
 
+import android.content.Context;
+import android.util.Log;
 import android.widget.FrameLayout;
+import android.widget.Toast;
 
 import com.bil.bilmobileads.interfaces.ResultCallback;
+import com.consentmanager.sdk.CMPConsentTool;
+import com.consentmanager.sdk.callbacks.OnCloseCallback;
+import com.consentmanager.sdk.callbacks.OnOpenCallback;
+import com.consentmanager.sdk.model.CMPConfig;
+import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.AdSize;
@@ -86,7 +94,22 @@ public class ADBanner {
                     @Override
                     public void success(AdUnitObj data) {
                         adUnitObj = data;
-                        load();
+
+                        final Context contextApp = PBMobileAds.getInstance().getContextApp();
+                        if (PBMobileAds.getInstance().showGDPR && CMPStorageV1.getConsentString(contextApp) == "") {
+                            String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
+
+                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "");
+                            CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
+                                @Override
+                                public void onWebViewClosed() {
+                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                    load();
+                                }
+                            });
+                        } else {
+                            load();
+                        }
                     }
 
                     @Override

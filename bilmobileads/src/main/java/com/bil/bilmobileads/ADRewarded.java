@@ -1,8 +1,13 @@
 package com.bil.bilmobileads;
 
 import android.app.Activity;
+import android.content.Context;
 
 import com.bil.bilmobileads.interfaces.ResultCallback;
+import com.consentmanager.sdk.CMPConsentTool;
+import com.consentmanager.sdk.callbacks.OnCloseCallback;
+import com.consentmanager.sdk.model.CMPConfig;
+import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
 import com.google.android.gms.ads.rewarded.RewardItem;
 import com.google.android.gms.ads.rewarded.RewardedAd;
@@ -78,7 +83,22 @@ public class ADRewarded {
                     @Override
                     public void success(AdUnitObj data) {
                         adUnitObj = data;
-                        preLoad();
+
+                        final Context contextApp = PBMobileAds.getInstance().getContextApp();
+                        if (PBMobileAds.getInstance().showGDPR && CMPStorageV1.getConsentString(contextApp) == "") {
+                            String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
+
+                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "");
+                            CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
+                                @Override
+                                public void onWebViewClosed() {
+                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                    preLoad();
+                                }
+                            });
+                        } else {
+                            preLoad();
+                        }
                     }
 
                     @Override

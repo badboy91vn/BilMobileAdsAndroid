@@ -143,7 +143,7 @@ public class PBMobileAds {
     }
 
     // MARK: - Call CMP / GDPR
-    public void initGDPR() {
+    private void initGDPR() {
         Context contextApp = this.getContextApp();
         String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
         CMPConsentTool.createInstance(contextApp, 14327, "consentmanager.mgr.consensu.org", appName, "");
