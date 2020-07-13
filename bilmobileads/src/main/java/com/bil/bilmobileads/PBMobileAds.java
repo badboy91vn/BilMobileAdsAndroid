@@ -133,9 +133,6 @@ public class PBMobileAds {
 
             @Override
             public void failure(Exception error) {
-                //  log("Err: " + error.getLocalizedMessage());
-
-//                timerRecall.start();
                 resultAD.failure(error);
             }
         });
