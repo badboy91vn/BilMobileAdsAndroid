@@ -63,7 +63,7 @@ public class ADRewarded {
         this.placement = placement;
         final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
         if (PBMobileAds.getInstance().isTestMode) {
-            builder.addTestDevice("B3EEABB8EE11C2BE770B684D95219ECB");
+            builder.addTestDevice(Constants.DEVICE_ID_TEST);
         }
         this.amRequest = builder.build();
 
@@ -85,7 +85,8 @@ public class ADRewarded {
                         adUnitObj = data;
 
                         final Context contextApp = PBMobileAds.getInstance().getContextApp();
-                        if (PBMobileAds.getInstance().showGDPR && CMPStorageV1.getConsentString(contextApp) == "") {
+//                        PBMobileAds.getInstance().showGDPR &&
+                        if (CMPStorageV1.getConsentString(contextApp) == "") {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
                             CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "");

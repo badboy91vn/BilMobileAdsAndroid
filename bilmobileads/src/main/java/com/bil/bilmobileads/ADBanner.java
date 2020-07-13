@@ -1,14 +1,11 @@
 package com.bil.bilmobileads;
 
 import android.content.Context;
-import android.util.Log;
 import android.widget.FrameLayout;
-import android.widget.Toast;
 
 import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.consentmanager.sdk.CMPConsentTool;
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
-import com.consentmanager.sdk.callbacks.OnOpenCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.AdListener;
@@ -74,7 +71,7 @@ public class ADBanner {
 
         final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
         if (PBMobileAds.getInstance().isTestMode) {
-            builder.addTestDevice("B3EEABB8EE11C2BE770B684D95219ECB");
+            builder.addTestDevice(Constants.DEVICE_ID_TEST);
         }
         this.amRequest = builder.build();
 
@@ -96,7 +93,8 @@ public class ADBanner {
                         adUnitObj = data;
 
                         final Context contextApp = PBMobileAds.getInstance().getContextApp();
-                        if (PBMobileAds.getInstance().showGDPR && CMPStorageV1.getConsentString(contextApp) == "") {
+//                        PBMobileAds.getInstance().showGDPR &&
+                        if (CMPStorageV1.getConsentString(contextApp) == "") {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
                             CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "");
