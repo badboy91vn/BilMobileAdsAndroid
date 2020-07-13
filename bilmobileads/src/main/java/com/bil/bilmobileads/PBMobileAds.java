@@ -9,9 +9,10 @@ import com.bil.bilmobileads.entity.ADFormat;
 import com.bil.bilmobileads.entity.AdInfor;
 import com.bil.bilmobileads.entity.AdUnitObj;
 import com.bil.bilmobileads.entity.HostCustom;
-import com.bil.bilmobileads.entity.TimerRecall;
+//import com.bil.bilmobileads.entity.TimerRecall;
 import com.bil.bilmobileads.interfaces.ResultCallback;
-import com.bil.bilmobileads.interfaces.TimerCompleteListener;
+//import com.bil.bilmobileads.interfaces.TimerCompleteListener;
+import com.consentmanager.sdk.CMPConsentTool;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -39,8 +40,7 @@ public class PBMobileAds {
 
     // MARK: api
     boolean isTestMode = false;
-    boolean isLog = true;
-
+    boolean showGDPR = false;
     private String pbServerEndPoint = "";
 
     private PBMobileAds() {
@@ -53,7 +53,6 @@ public class PBMobileAds {
 
     // MARK: - initialize
     public void initialize(Context context, boolean testMode) {
-        //  if !isLog { PrebidMobile.logLevel = .error }
         this.contextApp = context;
         this.isTestMode = testMode;
 
@@ -71,20 +70,22 @@ public class PBMobileAds {
     // MARK: - Call API AD
     void getADConfig(final String adUnit, final ResultCallback resultAD) {
         this.log("Start Request Config adUnit: " + adUnit);
-        final TimerRecall timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000);
-        timerRecall.setListener(new TimerCompleteListener() {
-            @Override
-            public void doWork() {
-                getADConfig(adUnit, resultAD);
-            }
-        });
+
+//        final TimerRecall timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000);
+//        timerRecall.setListener(new TimerCompleteListener() {
+//            @Override
+//            public void doWork() {
+//                getADConfig(adUnit, resultAD);
+//            }
+//        });
 
         HttpApi httpApi = new HttpApi<JSONObject>(Constants.GET_DATA_CONFIG + adUnit, new ResultCallback<JSONObject, Exception>() {
             @Override
             public void success(JSONObject dataJSON) {
-                timerRecall.cancel();
+//                timerRecall.cancel();
                 try {
                     pbServerEndPoint = dataJSON.getString("pbServerEndPoint");
+                    showGDPR = dataJSON.getBoolean("showGDPR");
 
                     // Set all ad type config
                     JSONObject adunitJsonObj = dataJSON.getJSONObject("adunit");
@@ -134,11 +135,18 @@ public class PBMobileAds {
             public void failure(Exception error) {
                 //  log("Err: " + error.getLocalizedMessage());
 
-                timerRecall.start();
+//                timerRecall.start();
                 resultAD.failure(error);
             }
         });
         httpApi.execute();
+    }
+
+    // MARK: - Call CMP / GDPR
+    public void initGDPR() {
+        Context contextApp = this.getContextApp();
+        String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
+        CMPConsentTool.createInstance(contextApp, 14327, "consentmanager.mgr.consensu.org", appName, "");
     }
 
     // MARK: - Get Data Config
@@ -177,9 +185,8 @@ public class PBMobileAds {
     }
 
     public boolean log(String object) {
-        if (!isLog) {
-            return false;
-        }
+        if (!BuildConfig.DEBUG) return false;
+
         Log.d("PBMobileAds", object);
         return false;
     }

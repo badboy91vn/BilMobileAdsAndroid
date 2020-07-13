@@ -180,7 +180,7 @@ public class ADInterstitial {
         this.adUnit.fetchDemand(this.amRequest, new OnCompleteListener() {
             @Override
             public void onComplete(ResultCode resultCode) {
-                PBMobileAds.getInstance().log("Prebid demand fetch for DFP " + resultCode.name());
+                PBMobileAds.getInstance().log("Prebid demand fetch placement '" + placement + "' for DFP: " + resultCode.name());
                 handerResult(resultCode);
             }
         });
@@ -268,6 +268,9 @@ public class ADInterstitial {
         PBMobileAds.getInstance().log("Destroy Placement: " + this.placement);
         this.isLoadAfterPreload = false;
         this.adUnit.stopAutoRefresh();
+
+        this.timerRecall.cancel();
+        this.timerRecall = null;
     }
 
     public boolean isReady() {

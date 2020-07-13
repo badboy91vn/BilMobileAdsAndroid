@@ -112,7 +112,7 @@ public class ADRewarded {
             this.amRewarded.loadAd(this.amRequest, new RewardedAdLoadCallback() {
                 @Override
                 public void onRewardedAdLoaded() {
-                    PBMobileAds.getInstance().log("RewarededVideo load SUCC");
+                    PBMobileAds.getInstance().log("RewarededVideo load placement '" + placement + "': SUCC");
                     isFetchingAD = false;
 
                     if (isLoadAfterPreload) {
@@ -123,7 +123,7 @@ public class ADRewarded {
 
                 @Override
                 public void onRewardedAdFailedToLoad(int errorCode) {
-                    PBMobileAds.getInstance().log("RewardedVideo load failed: " + errorCode);
+                    PBMobileAds.getInstance().log("RewardedVideo load placement '" + placement + "' failed: " + errorCode);
                     isFetchingAD = false;
 
                     if (!isLoadAfterPreload) deplayCallPreload();
@@ -191,7 +191,7 @@ public class ADRewarded {
         this.adUnit.fetchDemand(this.amRequest, new OnCompleteListener() {
             @Override
             public void onComplete(ResultCode resultCode) {
-                PBMobileAds.getInstance().log("Prebid demand fetch for DFP " + resultCode.name());
+                PBMobileAds.getInstance().log("Prebid demand fetch placement '" + placement + "' for DFP: " + resultCode.name());
                 handerResult(resultCode);
             }
         });
@@ -255,6 +255,9 @@ public class ADRewarded {
         PBMobileAds.getInstance().log("Destroy Placement: " + this.placement);
         this.isLoadAfterPreload = false;
         this.adUnit.stopAutoRefresh();
+
+        this.timerRecall.cancel();
+        this.timerRecall = null;
     }
 
     public boolean isReady() {
