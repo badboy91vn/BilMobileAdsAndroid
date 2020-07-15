@@ -92,18 +92,16 @@ public class ADBanner {
                     public void success(AdUnitObj data) {
                         adUnitObj = data;
 
-                        final Context contextApp = PBMobileAds.getInstance().getContextApp();
+                        Context contextApp = PBMobileAds.getInstance().getContextApp();
 //                        PBMobileAds.getInstance().showGDPR &&
-                        if (CMPStorageV1.getConsentString(contextApp) == "") {
+                        String consentStr = CMPStorageV1.getConsentString(contextApp);
+                        if (consentStr.equalsIgnoreCase("")) {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
-                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "");
-                            CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
-                                @Override
-                                public void onWebViewClosed() {
-                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
-                                    load();
-                                }
+                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "EN");
+                            CMPConsentTool.createInstance(contextApp, cmpConfig, () -> {
+                                PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                load();
                             });
                         } else {
                             load();
@@ -192,7 +190,7 @@ public class ADBanner {
         }
         this.adUnit.setAutoRefreshPeriodMillis(this.timeAutoRefresh);
 
-        this.amBanner = new PublisherAdView(PBMobileAds.getInstance().getContextApp());
+        this.amBanner = new PublisherAdView(PBMobileAds.getInstance().getContextApp().getApplicationContext());
         this.amBanner.setAdUnitId(adInfor.adUnitID);
         this.amBanner.setAdSizes(this.curBannerSize);
 

@@ -5,7 +5,6 @@ import android.content.Context;
 
 import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.consentmanager.sdk.CMPConsentTool;
-import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
@@ -84,18 +83,16 @@ public class ADRewarded {
                     public void success(AdUnitObj data) {
                         adUnitObj = data;
 
-                        final Context contextApp = PBMobileAds.getInstance().getContextApp();
+                        Context contextApp = PBMobileAds.getInstance().getContextApp();
 //                        PBMobileAds.getInstance().showGDPR &&
-                        if (CMPStorageV1.getConsentString(contextApp) == "") {
+                        String consentStr = CMPStorageV1.getConsentString(contextApp);
+                        if (consentStr.equalsIgnoreCase("")) {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
-                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "");
-                            CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
-                                @Override
-                                public void onWebViewClosed() {
-                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
-                                    preLoad();
-                                }
+                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "EN");
+                            CMPConsentTool.createInstance(contextApp, cmpConfig, () -> {
+                                PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                preLoad();
                             });
                         } else {
                             preLoad();
@@ -206,7 +203,7 @@ public class ADRewarded {
         rAdUnit.setParameters(parameters);
         this.adUnit = rAdUnit;
 
-        this.amRewarded = new RewardedAd(PBMobileAds.getInstance().getContextApp(), adInfor.adUnitID);
+        this.amRewarded = new RewardedAd(PBMobileAds.getInstance().getContextApp().getApplicationContext(), adInfor.adUnitID);
 
         this.isFetchingAD = true;
         this.adUnit.fetchDemand(this.amRequest, new OnCompleteListener() {
