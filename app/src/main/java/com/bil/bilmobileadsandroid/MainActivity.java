@@ -38,8 +38,8 @@ public class MainActivity extends AppCompatActivity {
 //        this.adInterstitial = new ADInterstitial("1002");
 //        this.adInterstitial.preLoad();
 
-        this.adRewarded = new ADRewarded(this, "1003");
-        this.adRewarded.preLoad();
+//        this.adRewarded = new ADRewarded(this, "1003");
+//        this.adRewarded.preLoad();
 
         Button btnShowFull = (Button) findViewById(R.id.showFull);
         btnShowFull.setOnClickListener(new View.OnClickListener() {
