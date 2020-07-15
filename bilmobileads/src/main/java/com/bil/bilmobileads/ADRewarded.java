@@ -5,6 +5,7 @@ import android.content.Context;
 
 import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.consentmanager.sdk.CMPConsentTool;
+import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
@@ -90,9 +91,12 @@ public class ADRewarded {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
                             CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "EN");
-                            CMPConsentTool.createInstance(contextApp, cmpConfig, () -> {
-                                PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
-                                preLoad();
+                            CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
+                                @Override
+                                public void onWebViewClosed() {
+                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                    preLoad();
+                                }
                             });
                         } else {
                             preLoad();
