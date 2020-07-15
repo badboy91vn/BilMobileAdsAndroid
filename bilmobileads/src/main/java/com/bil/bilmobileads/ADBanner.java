@@ -92,7 +92,7 @@ public class ADBanner {
                     public void success(AdUnitObj data) {
                         adUnitObj = data;
 
-                        Context contextApp = PBMobileAds.getInstance().getContextApp();
+                        final Context contextApp = PBMobileAds.getInstance().getContextApp();
 //                        PBMobileAds.getInstance().showGDPR &&
                         String consentStr = CMPStorageV1.getConsentString(contextApp);
                         if (consentStr.equalsIgnoreCase("")) {
