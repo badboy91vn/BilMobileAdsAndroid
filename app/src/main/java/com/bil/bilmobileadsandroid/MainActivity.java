@@ -26,7 +26,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        PBMobileAds.getInstance().initialize(getApplicationContext(), true);
+        PBMobileAds.getInstance().initialize(this, true);
 
         FrameLayout bannerView = findViewById(R.id.bannerView);
         //  init banner  | ba87c06b-8fdf-4f19-9c63-4777e8957295

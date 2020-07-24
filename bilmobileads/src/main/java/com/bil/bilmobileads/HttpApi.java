@@ -33,7 +33,6 @@ class HttpApi<T> extends AsyncTask<Object, Void, DataResponse<T>> {
         try {
             URL url = new URL(Constants.URL_PREFIX + this.api);
             HttpURLConnection httpCon = (HttpURLConnection) url.openConnection();
-//                httpCon.setDoInput(true);
             httpCon.setRequestMethod("GET");
             httpCon.setRequestProperty("Content-Type", "application/json");
             httpCon.setRequestProperty("Accept", "application/json");

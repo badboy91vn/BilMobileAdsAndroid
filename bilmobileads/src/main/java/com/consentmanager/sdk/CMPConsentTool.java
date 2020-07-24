@@ -130,6 +130,7 @@ public class CMPConsentTool {
         this.context = context;
         this.config = config;
         this.checkAndProceedConsentUpdate();
+
         // on reload app listener
         ((AppCompatActivity) context).getApplication().registerActivityLifecycleCallbacks(new Application.ActivityLifecycleCallbacks() {
 
@@ -227,20 +228,20 @@ public class CMPConsentTool {
             }
         });
 
-        //on connection settings changed listener
-        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
-        networkReceiver = new BroadcastReceiver() {
-            @Override
-            public void onReceive(Context context, Intent intent) {
-                ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
-                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
-                boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
-                if (isConnected) {
-                    CMPConsentTool.this.checkAndProceedConsentUpdate();
-                }
-            }
-        };
-        this.context.registerReceiver(networkReceiver, filter);
+//        //on connection settings changed listener
+//        IntentFilter filter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+//        networkReceiver = new BroadcastReceiver() {
+//            @Override
+//            public void onReceive(Context context, Intent intent) {
+//                ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+//                NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
+//                boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
+//                if (isConnected) {
+//                    CMPConsentTool.this.checkAndProceedConsentUpdate();
+//                }
+//            }
+//        };
+//        this.context.registerReceiver(networkReceiver, filter);
     }
 
     /**
@@ -513,7 +514,9 @@ public class CMPConsentTool {
      * display Alert, or the errorDialog Listener is called, if given.
      */
     private void checkAndProceedConsentUpdate() {
-        if (needsServerUpdate()) {
+        // My CMP
+        //  if (needsServerUpdate()) {
+        if (needShowCMP(context)) {
             response = proceedServerRequest();
             switch (response.getStatus()) {
                 case 0:
@@ -525,6 +528,34 @@ public class CMPConsentTool {
                 default:
                     showErrorMessage(response.getMessage());
             }
+        }
+    }
+
+    // My CMP
+    private static boolean compareNowLessFuture(Date futureDate) {
+        Date now = new Date();
+        if (now.compareTo(futureDate) <= 0) {
+            return false;
+        } else if (now.compareTo(futureDate) > 0) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+    public static boolean needShowCMP(Context context) {
+        String consentS = CMPStorageConsentManager.getConsentString(context);
+        Date lastDate = CMPPrivateStorage.getLastRequested(context);
+
+        if (consentS == null || consentS.isEmpty()) {
+            // Reject -> Answer after 14d
+            if (lastDate != null) {
+                return compareNowLessFuture(lastDate);
+            }
+            // First Time
+            return true;
+        } else {
+            // Accepted -> Answer after 365d
+            return compareNowLessFuture(lastDate);
         }
     }
 
@@ -565,7 +596,6 @@ public class CMPConsentTool {
      * @return The Response from the Server
      */
     private ServerResponse proceedServerRequest() {
-
         try {
             response = ServerContacter.getAndSaveResponse(config, context);
             return response;

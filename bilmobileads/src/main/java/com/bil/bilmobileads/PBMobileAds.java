@@ -85,7 +85,7 @@ public class PBMobileAds {
 //                timerRecall.cancel();
                 try {
                     pbServerEndPoint = dataJSON.getString("pbServerEndPoint");
-//                    showGDPR = dataJSON.getBoolean("showGDPR");
+                    showGDPR = true; // dataJSON.getBoolean("showGDPR");
 
                     // Set all ad type config
                     JSONObject adunitJsonObj = dataJSON.getJSONObject("adunit");
@@ -174,11 +174,21 @@ public class PBMobileAds {
     }
 
     public void enableCOPPA() {
-        TargetingParams.setSubjectToGDPR(true);
+        TargetingParams.setSubjectToCOPPA(true);
     }
 
     public void disableCOPPA() {
-        TargetingParams.setSubjectToGDPR(false);
+        TargetingParams.setSubjectToCOPPA(false);
+    }
+
+    public void setGender(PBMobileAds.GENDER gender) {
+        if (gender == GENDER.MALE) {
+            TargetingParams.setGender(TargetingParams.GENDER.MALE);
+        } else if (gender == GENDER.FEMALE) {
+            TargetingParams.setGender(TargetingParams.GENDER.FEMALE);
+        } else if (gender == GENDER.UNKNOWN) {
+            TargetingParams.setGender(TargetingParams.GENDER.UNKNOWN);
+        }
     }
 
     public boolean log(String object) {
@@ -187,4 +197,15 @@ public class PBMobileAds {
         Log.d("PBMobileAds", object);
         return false;
     }
+
+    public static enum GENDER {
+        FEMALE,
+        MALE,
+        UNKNOWN;
+
+        private GENDER() {
+        }
+    }
 }
+
+

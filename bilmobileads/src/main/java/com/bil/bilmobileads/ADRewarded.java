@@ -7,6 +7,7 @@ import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.consentmanager.sdk.CMPConsentTool;
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
+import com.consentmanager.sdk.storage.CMPStorageConsentManager;
 import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
 import com.google.android.gms.ads.rewarded.RewardItem;
@@ -25,6 +26,7 @@ import org.prebid.mobile.OnCompleteListener;
 import org.prebid.mobile.ResultCode;
 import org.prebid.mobile.RewardedVideoAdUnit;
 import org.prebid.mobile.Signals;
+import org.prebid.mobile.TargetingParams;
 import org.prebid.mobile.VideoBaseAdUnit;
 
 import java.util.Arrays;
@@ -85,16 +87,14 @@ public class ADRewarded {
                         adUnitObj = data;
 
                         final Context contextApp = PBMobileAds.getInstance().getContextApp();
-//                        PBMobileAds.getInstance().showGDPR &&
-                        String consentStr = CMPStorageV1.getConsentString(contextApp);
-                        if (consentStr.equalsIgnoreCase("")) {
+                        if (PBMobileAds.getInstance().showGDPR && CMPConsentTool.needShowCMP(contextApp)) {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
-                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "EN");
+                            CMPConfig cmpConfig = CMPConfig.createInstance(15029, "consentmanager.mgr.consensu.org", appName, "EN");
                             CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
                                 @Override
                                 public void onWebViewClosed() {
-                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageConsentManager.getConsentString(contextApp));
                                     preLoad();
                                 }
                             });
@@ -185,14 +185,17 @@ public class ADRewarded {
             this.adFormatDefault = this.adUnitObj.adInfor.get(0).isVideo ? ADFormat.VAST : ADFormat.HTML;
         }
 
-        AdInfor adInfor;
+        // Set GDPR
+        if (PBMobileAds.getInstance().showGDPR) {
+            TargetingParams.setSubjectToGDPR(true);
+            TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
+        }
 
-        AdInfor info = this.getAdInfor(true);
-        if (info == null) {
+        AdInfor adInfor = this.getAdInfor(true);
+        if (adInfor == null) {
             PBMobileAds.getInstance().log("AdInfor is not exist");
             return false;
         }
-        adInfor = info;
 
         PBMobileAds.getInstance().setupPBS(adInfor.host);
         PBMobileAds.getInstance().log("[Full Video] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
@@ -235,26 +238,29 @@ public class ADRewarded {
         this.amRewarded.show(this.activityAd, new RewardedAdCallback() {
             @Override
             public void onRewardedAdOpened() {
+                isFetchingAD = false;
                 if (adDelegate == null) return;
                 adDelegate.onRewardedAdOpened("onRewardedAdOpened");
             }
 
             @Override
             public void onRewardedAdClosed() {
+                isFetchingAD = false;
                 if (adDelegate == null) return;
                 adDelegate.onRewardedAdOpened("onRewardedAdClosed");
             }
 
             @Override
             public void onUserEarnedReward(@NonNull RewardItem reward) {
+                isFetchingAD = false;
                 if (adDelegate == null) return;
                 adDelegate.onRewardedAdOpened("onUserEarnedReward");
             }
 
             @Override
             public void onRewardedAdFailedToShow(int errorCode) {
+                isFetchingAD = false;
                 if (adDelegate == null) return;
-
                 switch (errorCode) {
                     case ERROR_CODE_INTERNAL_ERROR:
                         adDelegate.onRewardedAdOpened("INTERNAL_ERROR");

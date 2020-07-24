@@ -7,6 +7,7 @@ import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.consentmanager.sdk.CMPConsentTool;
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
+import com.consentmanager.sdk.storage.CMPStorageConsentManager;
 import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
@@ -33,6 +34,7 @@ import org.prebid.mobile.VideoBaseAdUnit;
 import org.prebid.mobile.addendum.AdViewUtils;
 import org.prebid.mobile.addendum.PbFindSizeError;
 
+import java.lang.annotation.Target;
 import java.util.Arrays;
 
 import androidx.annotation.NonNull;
@@ -93,16 +95,14 @@ public class ADBanner {
                         adUnitObj = data;
 
                         final Context contextApp = PBMobileAds.getInstance().getContextApp();
-//                        PBMobileAds.getInstance().showGDPR &&
-                        String consentStr = CMPStorageV1.getConsentString(contextApp);
-                        if (consentStr.equalsIgnoreCase("")) {
+                        if (PBMobileAds.getInstance().showGDPR && CMPConsentTool.needShowCMP(contextApp)) {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
-                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "EN");
+                            CMPConfig cmpConfig = CMPConfig.createInstance(15029, "consentmanager.mgr.consensu.org", appName, "EN");
                             CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
                                 @Override
                                 public void onWebViewClosed() {
-                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageConsentManager.getConsentString(contextApp));
                                     load();
                                 }
                             });
@@ -157,6 +157,12 @@ public class ADBanner {
 
         // Remove Ad
         this.destroy();
+
+        // Set GDPR
+        if (PBMobileAds.getInstance().showGDPR) {
+            TargetingParams.setSubjectToGDPR(true);
+            TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
+        }
 
         AdInfor adInfor;
         if (this.adFormatDefault.equals(ADFormat.VAST)) {

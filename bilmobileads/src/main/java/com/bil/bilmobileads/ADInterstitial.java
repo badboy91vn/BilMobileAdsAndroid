@@ -6,6 +6,7 @@ import com.bil.bilmobileads.interfaces.ResultCallback;
 import com.consentmanager.sdk.CMPConsentTool;
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
+import com.consentmanager.sdk.storage.CMPStorageConsentManager;
 import com.consentmanager.sdk.storage.CMPStorageV1;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
@@ -24,6 +25,7 @@ import org.prebid.mobile.InterstitialAdUnit;
 import org.prebid.mobile.OnCompleteListener;
 import org.prebid.mobile.ResultCode;
 import org.prebid.mobile.Signals;
+import org.prebid.mobile.TargetingParams;
 import org.prebid.mobile.VideoBaseAdUnit;
 import org.prebid.mobile.VideoInterstitialAdUnit;
 
@@ -81,16 +83,14 @@ public class ADInterstitial {
                         adUnitObj = data;
 
                         final Context contextApp = PBMobileAds.getInstance().getContextApp();
-//                        PBMobileAds.getInstance().showGDPR &&
-                        String consentStr = CMPStorageV1.getConsentString(contextApp);
-                        if (consentStr.equalsIgnoreCase("")) {
+                        if (PBMobileAds.getInstance().showGDPR && CMPConsentTool.needShowCMP(contextApp)) {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
-                            CMPConfig cmpConfig = CMPConfig.createInstance(14327, "consentmanager.mgr.consensu.org", appName, "EN");
+                            CMPConfig cmpConfig = CMPConfig.createInstance(15029, "consentmanager.mgr.consensu.org", appName, "EN");
                             CMPConsentTool.createInstance(contextApp, cmpConfig, new OnCloseCallback() {
                                 @Override
                                 public void onWebViewClosed() {
-                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageV1.getConsentString(contextApp));
+                                    PBMobileAds.getInstance().log("ConsentString: " + CMPStorageConsentManager.getConsentString(contextApp));
                                     preLoad();
                                 }
                             });
@@ -160,6 +160,12 @@ public class ADInterstitial {
         // set adFormat theo loại duy nhất có
         if (adUnitObj.adInfor.size() < 2) {
             this.adFormatDefault = this.adUnitObj.adInfor.get(0).isVideo ? ADFormat.VAST : ADFormat.HTML;
+        }
+
+        // Set GDPR
+        if (PBMobileAds.getInstance().showGDPR) {
+            TargetingParams.setSubjectToGDPR(true);
+            TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
         }
 
         AdInfor adInfor;
@@ -234,6 +240,8 @@ public class ADInterstitial {
             @Override
             public void onAdClosed() {
                 super.onAdClosed();
+
+                isFetchingAD = false;
                 if (adDelegate == null) return;
                 adDelegate.onAdClosed("onAdClosed");
             }
@@ -241,8 +249,9 @@ public class ADInterstitial {
             @Override
             public void onAdFailedToLoad(int i) {
                 super.onAdFailedToLoad(i);
-                if (adDelegate == null) return;
 
+                isFetchingAD = false;
+                if (adDelegate == null) return;
                 switch (i) {
                     case AdRequest.ERROR_CODE_INTERNAL_ERROR:
                         adDelegate.onAdFailedToLoad("ERROR_CODE_INTERNAL_ERROR");
@@ -262,6 +271,8 @@ public class ADInterstitial {
             @Override
             public void onAdImpression() {
                 super.onAdImpression();
+
+                isFetchingAD = false;
                 if (adDelegate == null) return;
                 adDelegate.onAdImpression("onAdImpression");
             }
@@ -269,6 +280,8 @@ public class ADInterstitial {
             @Override
             public void onAdLeftApplication() {
                 super.onAdLeftApplication();
+
+                isFetchingAD = false;
                 if (adDelegate == null) return;
                 adDelegate.onAdLeftApplication("onAdLeftApplication");
             }

@@ -17,6 +17,7 @@ import android.widget.LinearLayout;
 
 import androidx.annotation.Nullable;
 import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
@@ -31,8 +32,13 @@ import com.consentmanager.sdk.model.ConsentStringDecoderV2;
 import com.consentmanager.sdk.factorys.WebViewCreator;
 import com.consentmanager.sdk.server.ServerContacter;
 import com.consentmanager.sdk.server.ServerResponse;
+import com.consentmanager.sdk.storage.CMPPrivateStorage;
 import com.consentmanager.sdk.storage.CMPStorageConsentManager;
 import com.consentmanager.sdk.storage.CMPStorageV1;
+
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.util.Date;
 
 public class CMPConsentToolActivity extends AppCompatActivity {
     private static final String CMP_SETTINGS_EXTRA = "cmp_settings";
@@ -45,18 +51,18 @@ public class CMPConsentToolActivity extends AppCompatActivity {
     /**
      * Used to start the Activity where the consentToolUrl is loaded into WebView
      *
-     * @param cmpSettings setup the needed data to initialize consent tool api.
-     *                    In case no prior consent can be found, it executes the
-     *                    procedure of getting consent from the user, which means
-     *                    loading the consentToolUrl provided by this object.
-     * @param context     context
+     * @param cmpSettings   setup the needed data to initialize consent tool api.
+     *                      In case no prior consent can be found, it executes the
+     *                      procedure of getting consent from the user, which means
+     *                      loading the consentToolUrl provided by this object.
+     * @param context       context
      * @param closeCallback listener called when CMPConsentToolActivity is closed after interacting with WebView
      */
     public static void openCmpConsentToolView(CMPSettings cmpSettings, Context context, OnCloseCallback closeCallback, OnNetworkExceptionCallback networkCallback) {
-        ConnectivityManager cm = (ConnectivityManager)context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
         NetworkInfo activeNetwork = cm.getActiveNetworkInfo();
         boolean isConnected = activeNetwork != null && activeNetwork.isConnected();
-        if( isConnected) {
+        if (isConnected) {
             Intent cmpConsentToolIntent = new Intent(context, CMPConsentToolActivity.class);
             cmpConsentToolIntent.putExtra(CMP_SETTINGS_EXTRA, cmpSettings);
             onCloseCallback = closeCallback;
@@ -64,22 +70,24 @@ public class CMPConsentToolActivity extends AppCompatActivity {
 
             context.startActivity(cmpConsentToolIntent);
         } else {
-            if( networkCallback != null){
+            if (networkCallback != null) {
                 networkCallback.onErrorOccur("The Network is not reachable to show the WebView");
             }
         }
     }
 
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        ActionBar actionBar = getSupportActionBar();
+        actionBar.hide();
 
         cmpSettings = CMPSettings.getInstance(this);
 
         if (cmpSettings == null) {
             CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
-//            CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+            //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
             CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
             finish();
             return;
@@ -91,27 +99,26 @@ public class CMPConsentToolActivity extends AppCompatActivity {
         } catch (CMPConsentToolSettingsException e) {
             e.printStackTrace();
             CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
-//            CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+            //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
             CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
             finish();
             return;
         }
         if (TextUtils.isEmpty(cmpSettings.getConsentToolUrl())) {
-
             CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
-//            CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+            //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
             CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
             try {
                 ServerResponse response = ServerContacter.getAndSaveResponse(config, this);
                 if (response.getUrl() == null) {
                     CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
-//                    CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+                    //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
                     CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
                     finish();
                     return;
                 }
-            } catch (CMPConsentToolNetworkException errorNetworkException){
-                if( onNetworkCallback != null){
+            } catch (CMPConsentToolNetworkException errorNetworkException) {
+                if (onNetworkCallback != null) {
                     onNetworkCallback.onErrorOccur(errorNetworkException.getMessage());
                 }
             }
@@ -136,10 +143,9 @@ public class CMPConsentToolActivity extends AppCompatActivity {
 
         WebViewCreator.initialise(this).getWebView().loadUrl(cmpSettings.getConsentToolUrl());
 
-
         //remove Parent link, if set.
-        if( linearLayout.getParent() != null){
-            ((ViewGroup)linearLayout.getParent()).removeView(linearLayout);
+        if (linearLayout.getParent() != null) {
+            ((ViewGroup) linearLayout.getParent()).removeView(linearLayout);
         }
 
         //Set Layer to Screen.
@@ -194,37 +200,52 @@ public class CMPConsentToolActivity extends AppCompatActivity {
         }
 
         private void handleReceivedConsentString(String url) {
-            String[] values = new String[0];
-
             System.out.println(url);
 
+            // My CMP
+            String[] values = new String[0];
             if (url != null) {
                 values = url.split("consent://");
             }
-
             if (values.length > 0) {
-                CMPStorageConsentManager.setConsentString(CMPConsentToolActivity.this, values[1]);
-                //encode String Base 64:
-                String fullString = new String(Base64.decode(values[1], Base64.DEFAULT));
+                String consentStr = values[1];
 
-                System.out.println(fullString);
-
-                String[] splits = fullString.split("#");
-
-                if (splits.length > 3) {
-
-                    proceedConsentString(splits[0]);
-                    proceedConsentManagerValues(splits);
-
-                } else {
+                // Reject
+                Date now = new Date();
+                if (consentStr.equalsIgnoreCase("consentrejected")) {
                     CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
-//                    CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+                    //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
                     CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
+                    CMPStorageConsentManager.setConsentString(CMPConsentToolActivity.this, null);
+
+                    // Set Time Ask Again After Rejected
+                    long time = (24 * 60 * 60000 * 14) + now.getTime();
+                    Date add14Day = new Date(time); // milisec: 1d * 14d | (24*60*60000 * 14) = 1209600000
+                    CMPPrivateStorage.setLastRequested(CMPConsentToolActivity.this, add14Day);
+                } else { // Accepted
+                    CMPStorageConsentManager.setConsentString(CMPConsentToolActivity.this, consentStr);
+                    proceedConsentString(consentStr);
+
+                    // Set Time Ask Again After Accepted
+                    long time = (24 * 60 * 60000 * 365) + now.getTime();
+                    Date add365Day = new Date(time); // milisec: 1d * 365d | (24*60*60000 * 365) = 31536000000
+                    CMPPrivateStorage.setLastRequested(CMPConsentToolActivity.this, add365Day);
                 }
 
+                //                //encode String Base 64:
+                //                String fullString = new String(Base64.decode(values[1], Base64.DEFAULT));
+                //                String[] splits = fullString.split("#");
+                //                if (splits.length > 3) {
+                //                    proceedConsentString(splits[0]);
+                //                    proceedConsentManagerValues(splits);
+                //                } else {
+                //                    CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
+                //                    //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+                //                    CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
+                //                }
             } else {
                 CMPStorageV1.clearConsents(CMPConsentToolActivity.this);
-//                CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
+                //  CMPStorageV2.clearConsents(CMPConsentToolActivity.this);
                 CMPStorageConsentManager.clearConsents(CMPConsentToolActivity.this);
             }
         }
@@ -235,18 +256,15 @@ public class CMPConsentToolActivity extends AppCompatActivity {
             CMPStorageConsentManager.setUSPrivacyString(CMPConsentToolActivity.this, splits[3]);
         }
 
-
         private void proceedConsentString(String value) {
             CMPStorageV1.setConsentString(CMPConsentToolActivity.this, value);
-            if( value.substring(0,1).equals("B") ){
+            if (value.substring(0, 1).equals("B")) {
                 ConsentStringDecoderV1 consentStringDecoder = new ConsentStringDecoderV1(CMPConsentToolActivity.this);
                 consentStringDecoder.processConsentString(value);
-            } else if( value.substring(0,1).equals("C") ){
+            } else if (value.substring(0, 1).equals("C")) {
                 ConsentStringDecoderV2 consentStringDecoder = new ConsentStringDecoderV2(CMPConsentToolActivity.this);
                 consentStringDecoder.processConsentString(value);
             }
-
-
         }
     }
 

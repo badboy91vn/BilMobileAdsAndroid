@@ -7,5 +7,5 @@ public interface AdRewardedDelegate {
 
     public void onUserEarnedReward(String data);
 
-    public void onRewardedAdFailedToShow(String data);
+    public void onRewardedAdFailedToShow(String err);
 }
