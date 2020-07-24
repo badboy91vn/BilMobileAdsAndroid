@@ -40,7 +40,7 @@ public class PBMobileAds {
 
     // MARK: api
     boolean isTestMode = false;
-    boolean showGDPR = false;
+    boolean gdprConfirm = false;
     private String pbServerEndPoint = "";
 
     private PBMobileAds() {
@@ -85,7 +85,7 @@ public class PBMobileAds {
 //                timerRecall.cancel();
                 try {
                     pbServerEndPoint = dataJSON.getString("pbServerEndPoint");
-                    showGDPR = true; // dataJSON.getBoolean("showGDPR");
+                    gdprConfirm = dataJSON.getBoolean("showGDPR");
 
                     // Set all ad type config
                     JSONObject adunitJsonObj = dataJSON.getJSONObject("adunit");

@@ -87,7 +87,7 @@ public class ADRewarded {
                         adUnitObj = data;
 
                         final Context contextApp = PBMobileAds.getInstance().getContextApp();
-                        if (PBMobileAds.getInstance().showGDPR && CMPConsentTool.needShowCMP(contextApp)) {
+                        if (PBMobileAds.getInstance().gdprConfirm && CMPConsentTool.needShowCMP(contextApp)) {
                             String appName = contextApp.getApplicationInfo().loadLabel(contextApp.getPackageManager()).toString();
 
                             CMPConfig cmpConfig = CMPConfig.createInstance(15029, "consentmanager.mgr.consensu.org", appName, "EN");
@@ -186,7 +186,7 @@ public class ADRewarded {
         }
 
         // Set GDPR
-        if (PBMobileAds.getInstance().showGDPR) {
+        if (PBMobileAds.getInstance().gdprConfirm) {
             TargetingParams.setSubjectToGDPR(true);
             TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
         }
