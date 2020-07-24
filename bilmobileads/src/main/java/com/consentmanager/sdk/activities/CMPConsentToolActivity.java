@@ -38,6 +38,7 @@ import com.consentmanager.sdk.storage.CMPStorageV1;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
+import java.util.Calendar;
 import java.util.Date;
 
 public class CMPConsentToolActivity extends AppCompatActivity {
@@ -219,17 +220,19 @@ public class CMPConsentToolActivity extends AppCompatActivity {
                     CMPStorageConsentManager.setConsentString(CMPConsentToolActivity.this, null);
 
                     // Set Time Ask Again After Rejected
-                    long time = (24 * 60 * 60000 * 14) + now.getTime();
-                    Date add14Day = new Date(time); // milisec: 1d * 14d | (24*60*60000 * 14) = 1209600000
-                    CMPPrivateStorage.setLastRequested(CMPConsentToolActivity.this, add14Day);
+                    Calendar add14Day = Calendar.getInstance();
+                    add14Day.setTime(now);
+                    add14Day.add(Calendar.DATE, 14);
+                    CMPPrivateStorage.setLastRequested(CMPConsentToolActivity.this, add14Day.getTime());
                 } else { // Accepted
                     CMPStorageConsentManager.setConsentString(CMPConsentToolActivity.this, consentStr);
                     proceedConsentString(consentStr);
 
                     // Set Time Ask Again After Accepted
-                    long time = (24 * 60 * 60000 * 365) + now.getTime();
-                    Date add365Day = new Date(time); // milisec: 1d * 365d | (24*60*60000 * 365) = 31536000000
-                    CMPPrivateStorage.setLastRequested(CMPConsentToolActivity.this, add365Day);
+                    Calendar add365Day = Calendar.getInstance();
+                    add365Day.setTime(now);
+                    add365Day.add(Calendar.DATE, 365);
+                    CMPPrivateStorage.setLastRequested(CMPConsentToolActivity.this, add365Day.getTime());
                 }
 
                 //                //encode String Base 64:

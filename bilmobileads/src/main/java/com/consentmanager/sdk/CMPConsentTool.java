@@ -205,7 +205,7 @@ public class CMPConsentTool {
 
             @Override
             public void onActivityResumed(@NonNull Activity activity) {
-                CMPConsentTool.this.checkAndProceedConsentUpdate();
+//                CMPConsentTool.this.checkAndProceedConsentUpdate();
             }
 
             @Override

@@ -85,7 +85,7 @@ public class PBMobileAds {
 //                timerRecall.cancel();
                 try {
                     pbServerEndPoint = dataJSON.getString("pbServerEndPoint");
-                    gdprConfirm = dataJSON.getBoolean("showGDPR");
+                    gdprConfirm = dataJSON.getBoolean("gdprConfirm");
 
                     // Set all ad type config
                     JSONObject adunitJsonObj = dataJSON.getJSONObject("adunit");
