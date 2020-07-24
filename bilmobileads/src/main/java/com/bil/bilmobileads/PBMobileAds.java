@@ -192,8 +192,6 @@ public class PBMobileAds {
     }
 
     public boolean log(String object) {
-        if (!BuildConfig.DEBUG) return false;
-
         Log.d("PBMobileAds", object);
         return false;
     }
