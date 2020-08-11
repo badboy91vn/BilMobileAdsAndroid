@@ -33,11 +33,11 @@ dependencies {
 //    embed project(path: ':play-services-gass-17.2.0', configuration:'default')
 
 //    implementation 'com.google.android.gms:play-services-ads:17.2.0'
-    embed 'com.google.android.gms:play-services-ads-base:17.2.0'
-    embed 'com.google.android.gms:play-services-ads-identifier:16.0.0'
-    embed 'com.google.android.gms:play-services-ads-lite:17.2.0'
-    embed 'com.google.android.gms:play-services-basement:16.0.1'
-    embed 'com.google.android.gms:play-services-gass:17.2.0'
+//    embed 'com.google.android.gms:play-services-ads-base:17.2.0'
+//    embed 'com.google.android.gms:play-services-ads-identifier:16.0.0'
+//    embed 'com.google.android.gms:play-services-ads-lite:17.2.0'
+//    embed 'com.google.android.gms:play-services-basement:16.0.1'
+//    embed 'com.google.android.gms:play-services-gass:17.2.0'
 
 
     implementation 'androidx.appcompat:appcompat:1.1.0'
