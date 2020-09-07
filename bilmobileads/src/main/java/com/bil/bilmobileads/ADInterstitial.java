@@ -8,6 +8,7 @@ import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageConsentManager;
 import com.consentmanager.sdk.storage.CMPStorageV1;
+import com.facebook.ads.BidderTokenProvider;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
@@ -167,6 +168,10 @@ public class ADInterstitial {
             TargetingParams.setSubjectToGDPR(true);
             TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
         }
+
+        // Set FB Token
+        String fbToken = BidderTokenProvider.getBidderToken(PBMobileAds.getInstance().getContextApp());
+        TargetingParams.addUserData("fb_token", fbToken);
 
         AdInfor adInfor;
         if (this.adFormatDefault.equals(ADFormat.VAST)) {

@@ -9,6 +9,7 @@ import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageConsentManager;
 import com.consentmanager.sdk.storage.CMPStorageV1;
+import com.facebook.ads.BidderTokenProvider;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
 import com.google.android.gms.ads.rewarded.RewardItem;
 import com.google.android.gms.ads.rewarded.RewardedAd;
@@ -190,6 +191,10 @@ public class ADRewarded {
             TargetingParams.setSubjectToGDPR(true);
             TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
         }
+
+        // Set FB Token
+        String fbToken = BidderTokenProvider.getBidderToken(PBMobileAds.getInstance().getContextApp());
+        TargetingParams.addUserData("fb_token", fbToken);
 
         AdInfor adInfor = this.getAdInfor(true);
         if (adInfor == null) {
