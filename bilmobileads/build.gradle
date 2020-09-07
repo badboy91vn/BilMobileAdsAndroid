@@ -3,6 +3,12 @@ apply plugin: 'com.kezong.fat-aar'
 apply plugin: 'com.github.dcendents.android-maven'
 group='com.github.badboy91vn'
 
+repositories {
+    flatDir {
+        dirs 'libs'
+    }
+}
+
 android {
     compileSdkVersion 29
     buildToolsVersion "29.0.3"
@@ -21,6 +27,8 @@ android {
 
 }
 
+configurations.embed.transitive = true
+
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation files('libs/prebid-mobile-sdk-core-1.6.jar')
@@ -31,10 +39,8 @@ dependencies {
 //    embed project(path: ':play-services-basement-16.0.1', configuration:'default')
 //    embed project(path: ':play-services-gass-17.2.0', configuration:'default')
 
-    implementation 'com.google.android.gms:play-services-ads:17.2.0'
     embed 'com.facebook.android:audience-network-sdk:5.11.0'
 
-    implementation 'androidx.appcompat:appcompat:1.1.0'
+    compileOnly 'com.google.android.gms:play-services-ads:17.2.0'
+    compileOnly 'androidx.appcompat:appcompat:1.1.0'
 }
-
-configurations.embed.transitive = true
