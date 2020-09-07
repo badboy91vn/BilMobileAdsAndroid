@@ -27,16 +27,11 @@ android {
 
 }
 
-configurations.embed.transitive = true
+//configurations.embed.transitive = true
 
 dependencies {
     implementation fileTree(include: ['*.jar'], dir: 'libs')
     implementation files('libs/prebid-mobile-sdk-core-1.6.jar')
-
-//    implementation 'com.google.android.gms:play-services-ads:17.2.0'
-//    implementation 'androidx.appcompat:appcompat:1.1.0'
-    compileOnly 'com.google.android.gms:play-services-ads:17.2.0'
-    compileOnly 'androidx.appcompat:appcompat:1.1.0'
 
 //    embed project(path: ':play-services-ads-lite-17.2.0', configuration:'default')
 //    embed project(path: ':play-services-ads-identifier-16.0.0', configuration:'default')
@@ -45,4 +40,7 @@ dependencies {
 //    embed project(path: ':play-services-gass-17.2.0', configuration:'default')
 
     embed 'com.facebook.android:audience-network-sdk:5.11.0'
+
+    implementation 'com.google.android.gms:play-services-ads:17.2.0'
+    implementation 'androidx.appcompat:appcompat:1.1.0'
 }
