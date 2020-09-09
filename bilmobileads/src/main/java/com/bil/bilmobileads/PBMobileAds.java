@@ -6,13 +6,16 @@ import android.util.Log;
 import android.webkit.WebView;
 
 import com.bil.bilmobileads.entity.ADFormat;
+import com.bil.bilmobileads.entity.ADType;
 import com.bil.bilmobileads.entity.AdInfor;
 import com.bil.bilmobileads.entity.AdUnitObj;
+import com.bil.bilmobileads.entity.BannerSize;
 import com.bil.bilmobileads.entity.HostCustom;
 //import com.bil.bilmobileads.entity.TimerRecall;
 import com.bil.bilmobileads.interfaces.ResultCallback;
 //import com.bil.bilmobileads.interfaces.TimerCompleteListener;
 import com.consentmanager.sdk.CMPConsentTool;
+import com.google.android.gms.ads.AdRequest;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -58,9 +61,9 @@ public class PBMobileAds {
 
         // Declare in init to the user agent could be passed in first call
         PrebidMobile.setShareGeoLocation(true);
-        PrebidMobile.setApplicationContext(context);
-        WebView obj = new WebView(context);
-        obj.clearCache(true);
+        PrebidMobile.setApplicationContext(context.getApplicationContext());
+        WebView webView = new WebView(context);
+        if (webView != null) webView.clearCache(true);
     }
 
     public Context getContextApp() {
@@ -71,18 +74,18 @@ public class PBMobileAds {
     void getADConfig(final String adUnit, final ResultCallback resultAD) {
         this.log("Start Request Config adUnit: " + adUnit);
 
-//        final TimerRecall timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000);
-//        timerRecall.setListener(new TimerCompleteListener() {
-//            @Override
-//            public void doWork() {
-//                getADConfig(adUnit, resultAD);
-//            }
-//        });
+        //        final TimerRecall timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000);
+        //        timerRecall.setListener(new TimerCompleteListener() {
+        //            @Override
+        //            public void doWork() {
+        //                getADConfig(adUnit, resultAD);
+        //            }
+        //        });
 
         HttpApi httpApi = new HttpApi<JSONObject>(Constants.GET_DATA_CONFIG + adUnit, new ResultCallback<JSONObject, Exception>() {
             @Override
             public void success(JSONObject dataJSON) {
-//                timerRecall.cancel();
+                //  timerRecall.cancel();
                 try {
                     pbServerEndPoint = dataJSON.getString("pbServerEndPoint");
                     gdprConfirm = dataJSON.getBoolean("gdprConfirm");
@@ -91,8 +94,8 @@ public class PBMobileAds {
                     JSONObject adunitJsonObj = dataJSON.getJSONObject("adunit");
 
                     String placement = adunitJsonObj.getString("placement");
-                    String type = adunitJsonObj.getString("type");
-                    ADFormat defaultType = adunitJsonObj.getString("defaultType").equalsIgnoreCase(ADFormat.HTML.toString()) ? ADFormat.HTML : ADFormat.VAST;
+                    ADType type = getAdType(adunitJsonObj.getString("type"));
+                    ADFormat defaultFormat = adunitJsonObj.getString("defaultType").equalsIgnoreCase(ADFormat.HTML.toString()) ? ADFormat.HTML : ADFormat.VAST;
                     boolean isActive = adunitJsonObj.getBoolean("isActive");
 
                     // Create AdInfor
@@ -114,7 +117,40 @@ public class PBMobileAds {
                         adInforList.add(adInfor);
                     }
 
-                    AdUnitObj adUnitObj = new AdUnitObj(placement, type, defaultType, isActive, adInforList);
+                    AdUnitObj adUnitObj;
+                    // Set ad size if type is banner
+                    if (type == ADType.Banner || type == ADType.SmartBanner) {
+                        String width = adunitJsonObj.has("width") && !adunitJsonObj.getString("width").isEmpty() ? adunitJsonObj.getString("width") : "320";
+                        String height = adunitJsonObj.has("height") && !adunitJsonObj.getString("height").isEmpty() ? adunitJsonObj.getString("height") : "50";
+                        String size = width + "x" + height;
+
+                        BannerSize bannerSize;
+                        switch (size) {
+                            case "320x50":
+                                bannerSize = BannerSize.Banner320x50;
+                                break;
+                            case "320x100":
+                                bannerSize = BannerSize.Banner320x100;
+                                break;
+                            case "300x250":
+                                bannerSize = BannerSize.Banner300x250;
+                                break;
+                            case "468x60":
+                                bannerSize = BannerSize.Banner468x60;
+                                break;
+                            case "728x90":
+                                bannerSize = BannerSize.Banner728x90;
+                                break;
+                            default:
+                                bannerSize = BannerSize.SmartBanner;
+                                break;
+                        }
+
+                        adUnitObj = new AdUnitObj(placement, type, defaultFormat, isActive, adInforList, bannerSize);
+                    } else {
+                        adUnitObj = new AdUnitObj(placement, type, defaultFormat, isActive, adInforList);
+                    }
+
                     listAdUnitObj.add(adUnitObj);
 
                     // Return result
@@ -191,6 +227,10 @@ public class PBMobileAds {
         }
     }
 
+    public void setYearOfBirth(int yearOfBirth) throws Exception {
+        TargetingParams.setYearOfBirth(yearOfBirth);
+    }
+
     public boolean log(String object) {
         Log.d("PBMobileAds", object);
         return false;
@@ -203,6 +243,41 @@ public class PBMobileAds {
 
         private GENDER() {
         }
+    }
+
+    public String getADError(int errorCode) {
+        String messErr = "";
+        switch (errorCode) {
+            case AdRequest.ERROR_CODE_INTERNAL_ERROR:
+                messErr = "ERROR_CODE_INTERNAL_ERROR";
+                break;
+            case AdRequest.ERROR_CODE_INVALID_REQUEST:
+                messErr = "ERROR_CODE_INVALID_REQUEST";
+                break;
+            case AdRequest.ERROR_CODE_NETWORK_ERROR:
+                messErr = "ERROR_CODE_NETWORK_ERROR";
+                break;
+            case AdRequest.ERROR_CODE_NO_FILL:
+                messErr = "ERROR_CODE_NO_FILL";
+                break;
+        }
+
+        return messErr;
+    }
+
+    ADType getAdType(String type) {
+        switch (type) {
+            case "banner":
+                return ADType.Banner;
+            case "smart_banner":
+                return ADType.SmartBanner;
+            case "interstitial":
+                return ADType.Interstitial;
+            case "rewarded":
+                return ADType.Rewarded;
+        }
+
+        return null;
     }
 }
 

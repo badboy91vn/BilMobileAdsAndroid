@@ -1,11 +1,18 @@
 package com.bil.bilmobileads.interfaces;
 
-public interface AdRewardedDelegate {
-    public void onRewardedAdOpened(String data);
+import com.google.android.gms.ads.rewarded.RewardItem;
 
-    public void onRewardedAdClosed(String data);
+public class AdRewardedDelegate {
 
-    public void onUserEarnedReward(String data);
+    public void onRewardedAdLoaded(String data){};
 
-    public void onRewardedAdFailedToShow(String err);
+    public void onRewardedAdOpened(String data){};
+
+    public void onRewardedAdClosed(String data){};
+
+    public void onUserEarnedReward(RewardItem data){};
+
+    public void onRewardedAdFailedToLoad(String err){};
+
+    public void onRewardedAdFailedToShow(String err){};
 }

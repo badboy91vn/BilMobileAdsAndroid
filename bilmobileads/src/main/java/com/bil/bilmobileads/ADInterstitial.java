@@ -7,8 +7,6 @@ import com.consentmanager.sdk.CMPConsentTool;
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageConsentManager;
-import com.consentmanager.sdk.storage.CMPStorageV1;
-import com.facebook.ads.BidderTokenProvider;
 import com.google.android.gms.ads.AdListener;
 import com.google.android.gms.ads.AdRequest;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
@@ -60,11 +58,6 @@ public class ADInterstitial {
         PBMobileAds.getInstance().log("AD Interstitial Init: " + placement);
 
         this.placement = placement;
-        final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
-        if (PBMobileAds.getInstance().isTestMode) {
-            builder.addTestDevice(Constants.DEVICE_ID_TEST);
-        }
-        this.amRequest = builder.build();
 
         this.timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000, new TimerCompleteListener() {
             @Override
@@ -111,7 +104,7 @@ public class ADInterstitial {
         }
     }
 
-    // MARK: - Preload + Load
+    // MARK: - Private FUNC
     void deplayCallPreload() {
         this.isRecallingPreload = true;
         this.timerRecall.start();
@@ -126,12 +119,23 @@ public class ADInterstitial {
         return null;
     }
 
+    void resetAD() {
+        if (this.adUnit == null || this.amInterstitial == null) return;
+
+        this.isRecallingPreload = false;
+
+        this.adUnit.stopAutoRefresh();
+        this.adUnit = null;
+
+        this.amInterstitial.setAdListener(null);
+        this.amInterstitial = null;
+    }
+
     void handerResult(ResultCode resultCode) {
         if (resultCode == ResultCode.SUCCESS) {
             this.amInterstitial.loadAd(this.amRequest);
         } else {
             if (resultCode == ResultCode.NO_BIDS) {
-                this.adFormatDefault = this.adFormatDefault.equals(ADFormat.HTML) ? ADFormat.VAST : ADFormat.HTML;
                 // Ko gọi lại preload nếu user gọi load() đầu tiên
                 if (!this.isLoadAfterPreload) this.deplayCallPreload();
             } else if (resultCode == ResultCode.TIMEOUT) {
@@ -143,78 +147,76 @@ public class ADInterstitial {
         }
     }
 
+    // MARK: - Public FUNC
     public boolean preLoad() {
-        PBMobileAds.getInstance().log(" | isReady: " + this.isReady() + " |  isFetchingAD: " + this.isFetchingAD + " |  isRecallingPreload: " + this.isRecallingPreload);
+        PBMobileAds.getInstance().log("ADInterstitial Placement '" + this.placement + "' - isReady: " + this.isReady() + " |  isFetchingAD: " + this.isFetchingAD + " |  isRecallingPreload: " + this.isRecallingPreload);
         if (this.adUnitObj == null || this.isReady() == true || this.isFetchingAD == true || this.isRecallingPreload == true) {
             return false;
         }
-        PBMobileAds.getInstance().log("Preload Interstitial AD: " + this.placement);
+        this.resetAD();
 
         // Check Active
         if (!this.adUnitObj.isActive || this.adUnitObj.adInfor.size() <= 0) {
-            PBMobileAds.getInstance().log("Ad is not active or not exist");
+            PBMobileAds.getInstance().log("ADInterstitial Placement '" + this.placement + "' is not active or not exist");
             return false;
         }
 
         // Check and set default
-        this.adFormatDefault = this.adFormatDefault == null ? this.adUnitObj.defaultType : this.adFormatDefault;
+        this.adFormatDefault = this.adUnitObj.defaultFormat;
         // set adFormat theo loại duy nhất có
         if (adUnitObj.adInfor.size() < 2) {
             this.adFormatDefault = this.adUnitObj.adInfor.get(0).isVideo ? ADFormat.VAST : ADFormat.HTML;
         }
 
+        // Check AdInfor
+        boolean isAdVideo = this.adFormatDefault == ADFormat.VAST;
+        AdInfor adInfor = this.getAdInfor(isAdVideo);
+        if (adInfor == null) {
+            PBMobileAds.getInstance().log("AdInfor of ADInterstitial Placement '" + this.placement + "' is not exist");
+            return false;
+        }
+
+        PBMobileAds.getInstance().log("Preload ADInterstitial Placement: " + this.placement);
         // Set GDPR
         if (PBMobileAds.getInstance().gdprConfirm) {
-            TargetingParams.setSubjectToGDPR(true);
-            TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
+            String consentStr = CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp());
+            if (consentStr != null && consentStr != "") {
+                TargetingParams.setSubjectToGDPR(true);
+                TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
+            }
         }
 
-        // Set FB Token
-        String fbToken = BidderTokenProvider.getBidderToken(PBMobileAds.getInstance().getContextApp());
-        TargetingParams.addUserData("fb_token", fbToken);
-
-        AdInfor adInfor;
-        if (this.adFormatDefault.equals(ADFormat.VAST)) {
-            AdInfor info = this.getAdInfor(true);
-            if (info == null) {
-                PBMobileAds.getInstance().log("AdInfor is not exist");
-                return false;
-            }
-            adInfor = info;
-
+        if (isAdVideo) {
             PBMobileAds.getInstance().setupPBS(adInfor.host);
-            PBMobileAds.getInstance().log("[Full Video] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
+            PBMobileAds.getInstance().log("[ADInterstitial Video] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
 
-            VideoBaseAdUnit.Parameters parameters = new VideoBaseAdUnit.Parameters();
-            parameters.setMimes(Arrays.asList("video/mp4"));
-            parameters.setProtocols(Arrays.asList(Signals.Protocols.VAST_2_0));
-            parameters.setPlaybackMethod(Arrays.asList(Signals.PlaybackMethod.AutoPlaySoundOn));
-            parameters.setPlacement(Signals.Placement.InBanner);
+//            VideoBaseAdUnit.Parameters parameters = new VideoBaseAdUnit.Parameters();
+//            parameters.setMimes(Arrays.asList("video/mp4"));
+//            parameters.setProtocols(Arrays.asList(Signals.Protocols.VAST_2_0));
+//            parameters.setPlaybackMethod(Arrays.asList(Signals.PlaybackMethod.AutoPlaySoundOn));
+//            parameters.setPlacement(Signals.Placement.InBanner);
+//            VideoInterstitialAdUnit vAdUnit = new VideoInterstitialAdUnit(adInfor.configId);
+//            vAdUnit.setParameters(parameters);
 
-            VideoInterstitialAdUnit vAdUnit = new VideoInterstitialAdUnit(adInfor.configId);
-            vAdUnit.setParameters(parameters);
-            this.adUnit = vAdUnit;
+            this.adUnit = new VideoInterstitialAdUnit(adInfor.configId);
         } else {
-            AdInfor info = this.getAdInfor(false);
-            if (info == null) {
-                PBMobileAds.getInstance().log("AdInfor is not exist");
-                return false;
-            }
-            adInfor = info;
-
             PBMobileAds.getInstance().setupPBS(adInfor.host);
-            PBMobileAds.getInstance().log("[Full Simple] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
+            PBMobileAds.getInstance().log("[ADInterstitial HTML] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
             this.adUnit = new InterstitialAdUnit(adInfor.configId);
         }
-
-        this.amInterstitial = new PublisherInterstitialAd(PBMobileAds.getInstance().getContextApp().getApplicationContext());
+        this.amInterstitial = new PublisherInterstitialAd(PBMobileAds.getInstance().getContextApp());
         this.amInterstitial.setAdUnitId(adInfor.adUnitID);
 
         this.isFetchingAD = true;
+        final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
+        if (PBMobileAds.getInstance().isTestMode) {
+            builder.addTestDevice(Constants.DEVICE_ID_TEST);
+        }
+        this.amRequest = builder.build();
         this.adUnit.fetchDemand(this.amRequest, new OnCompleteListener() {
             @Override
             public void onComplete(ResultCode resultCode) {
-                PBMobileAds.getInstance().log("Prebid demand fetch placement '" + placement + "' for DFP: " + resultCode.name());
+                PBMobileAds.getInstance().log("Prebid demand fetch ADInterstitial placement '" + placement + "' for DFP: " + resultCode.name());
                 handerResult(resultCode);
             }
         });
@@ -224,22 +226,25 @@ public class ADInterstitial {
             public void onAdLoaded() {
                 super.onAdLoaded();
 
-                // Đã gọi lên ad server succ
-                isFetchingAD = false;
-                if (amInterstitial.isLoaded() == true) {
-                    if (isLoadAfterPreload) {
-                        amInterstitial.show();
-                        isLoadAfterPreload = false;
-                    }
-
-                    if (adDelegate == null) return;
-                    adDelegate.onAdLoaded("Ad Interstitial Ready with placement " + placement);
-                } else {
+                if (isLoadAfterPreload) {
+                    amInterstitial.show();
                     isLoadAfterPreload = false;
-
-                    if (adDelegate == null) return;
-                    adDelegate.onAdLoaded("onAdLoaded Ad Interstitial Not Ready");
                 }
+
+                isFetchingAD = false;
+                PBMobileAds.getInstance().log("onAdLoaded: ADInterstitial Placement '" + placement + "'");
+                if (adDelegate == null) return;
+                adDelegate.onAdLoaded("onAdLoaded: ADInterstitial Placement '" + placement + "'");
+            }
+
+            @Override
+            public void onAdOpened() {
+                super.onAdOpened();
+
+                isFetchingAD = false;
+                PBMobileAds.getInstance().log("onAdOpened: ADInterstitial Placement '" + placement + "'");
+                if (adDelegate == null) return;
+                adDelegate.onAdOpened("onAdOpened: ADInterstitial Placement '" + placement + "'");
             }
 
             @Override
@@ -247,39 +252,19 @@ public class ADInterstitial {
                 super.onAdClosed();
 
                 isFetchingAD = false;
+                PBMobileAds.getInstance().log("onAdClosed: ADInterstitial Placement '" + placement + "'");
                 if (adDelegate == null) return;
-                adDelegate.onAdClosed("onAdClosed");
+                adDelegate.onAdClosed("onAdClosed: ADInterstitial Placement '" + placement + "'");
             }
 
             @Override
-            public void onAdFailedToLoad(int i) {
-                super.onAdFailedToLoad(i);
+            public void onAdClicked() {
+                super.onAdClicked();
 
                 isFetchingAD = false;
+                PBMobileAds.getInstance().log("onAdClicked: ADInterstitial Placement '" + placement + "'");
                 if (adDelegate == null) return;
-                switch (i) {
-                    case AdRequest.ERROR_CODE_INTERNAL_ERROR:
-                        adDelegate.onAdFailedToLoad("ERROR_CODE_INTERNAL_ERROR");
-                        break;
-                    case AdRequest.ERROR_CODE_INVALID_REQUEST:
-                        adDelegate.onAdFailedToLoad("ERROR_CODE_INVALID_REQUEST");
-                        break;
-                    case AdRequest.ERROR_CODE_NETWORK_ERROR:
-                        adDelegate.onAdFailedToLoad("ERROR_CODE_NETWORK_ERROR");
-                        break;
-                    case AdRequest.ERROR_CODE_NO_FILL:
-                        adDelegate.onAdFailedToLoad("ERROR_CODE_NO_FILL");
-                        break;
-                }
-            }
-
-            @Override
-            public void onAdImpression() {
-                super.onAdImpression();
-
-                isFetchingAD = false;
-                if (adDelegate == null) return;
-                adDelegate.onAdImpression("onAdImpression");
+                adDelegate.onAdClicked("onAdClicked: ADInterstitial Placement '" + placement + "'");
             }
 
             @Override
@@ -287,8 +272,25 @@ public class ADInterstitial {
                 super.onAdLeftApplication();
 
                 isFetchingAD = false;
+                PBMobileAds.getInstance().log("onAdLeftApplication: ADInterstitial Placement '" + placement + "'");
                 if (adDelegate == null) return;
-                adDelegate.onAdLeftApplication("onAdLeftApplication");
+                adDelegate.onAdLeftApplication("onAdLeftApplication: ADInterstitial Placement '" + placement + "'");
+            }
+
+            @Override
+            public void onAdFailedToLoad(int errorCode) {
+                super.onAdFailedToLoad(errorCode);
+
+                String messErr = PBMobileAds.getInstance().getADError(errorCode);
+                if (errorCode == AdRequest.ERROR_CODE_NO_FILL) {
+                    adFormatDefault = adFormatDefault.equals(ADFormat.VAST) ? ADFormat.HTML : ADFormat.VAST;
+                    if (!isLoadAfterPreload) deplayCallPreload();
+                }
+
+                isFetchingAD = false;
+                PBMobileAds.getInstance().log("onAdFailedToLoad: ADInterstitial Placement '" + placement + "' with error: " + messErr);
+                if (adDelegate == null) return;
+                adDelegate.onAdFailedToLoad("onAdFailedToLoad: ADInterstitial Placement '" + placement + "' with error: " + messErr);
             }
         });
 
@@ -299,25 +301,26 @@ public class ADInterstitial {
         if (isReady()) {
             this.amInterstitial.show();
         } else {
-            PBMobileAds.getInstance().log("Don't have AD");
+            PBMobileAds.getInstance().log("ADInterstitial Placement '" + this.placement + "' Don't have AD");
             this.isLoadAfterPreload = true;
             this.preLoad();
         }
     }
 
     public void destroy() {
-        PBMobileAds.getInstance().log("Destroy Placement: " + this.placement);
-        this.isLoadAfterPreload = false;
-        this.adUnit.stopAutoRefresh();
+        PBMobileAds.getInstance().log("Destroy ADInterstitial Placement: " + this.placement);
 
-        this.timerRecall.cancel();
-        this.timerRecall = null;
+        this.resetAD();
+        if (this.timerRecall != null) {
+            this.timerRecall.cancel();
+            this.timerRecall = null;
+        }
     }
 
     public boolean isReady() {
         if (this.amInterstitial == null) return false;
 
-        PBMobileAds.getInstance().log("IsReady: " + this.amInterstitial.isLoaded());
+        PBMobileAds.getInstance().log("ADInterstitial Placement '" + this.placement + "' IsReady: " + this.amInterstitial.isLoaded());
         return this.amInterstitial.isLoaded();
     }
 

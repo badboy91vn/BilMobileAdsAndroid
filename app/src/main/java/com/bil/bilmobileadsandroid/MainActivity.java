@@ -30,10 +30,7 @@ public class MainActivity extends AppCompatActivity {
 
         FrameLayout bannerView = findViewById(R.id.bannerView);
         //  init banner  | ba87c06b-8fdf-4f19-9c63-4777e8957295
-        this.adBanner = new ADBanner(bannerView, "1001");
-        this.adBanner.setAdSize(BannerSize.Banner300x250);
-        this.adBanner.setAutoRefreshMillis(30000);
-        this.adBanner.load();
+        this.adBanner = new ADBanner(bannerView, "e1922a7c-8f6d-4258-8ab4-7c96271ffa0d");
 
 //        this.adInterstitial = new ADInterstitial("1002");
 //        this.adInterstitial.preLoad();

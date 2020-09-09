@@ -8,8 +8,6 @@ import com.consentmanager.sdk.CMPConsentTool;
 import com.consentmanager.sdk.callbacks.OnCloseCallback;
 import com.consentmanager.sdk.model.CMPConfig;
 import com.consentmanager.sdk.storage.CMPStorageConsentManager;
-import com.consentmanager.sdk.storage.CMPStorageV1;
-import com.facebook.ads.BidderTokenProvider;
 import com.google.android.gms.ads.doubleclick.PublisherAdRequest;
 import com.google.android.gms.ads.rewarded.RewardItem;
 import com.google.android.gms.ads.rewarded.RewardedAd;
@@ -26,11 +24,7 @@ import org.prebid.mobile.AdUnit;
 import org.prebid.mobile.OnCompleteListener;
 import org.prebid.mobile.ResultCode;
 import org.prebid.mobile.RewardedVideoAdUnit;
-import org.prebid.mobile.Signals;
 import org.prebid.mobile.TargetingParams;
-import org.prebid.mobile.VideoBaseAdUnit;
-
-import java.util.Arrays;
 
 import androidx.annotation.NonNull;
 
@@ -64,11 +58,6 @@ public class ADRewarded {
 
         this.activityAd = activity;
         this.placement = placement;
-        final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
-        if (PBMobileAds.getInstance().isTestMode) {
-            builder.addTestDevice(Constants.DEVICE_ID_TEST);
-        }
-        this.amRequest = builder.build();
 
         this.timerRecall = new TimerRecall(Constants.RECALL_CONFIGID_SERVER, 1000, new TimerCompleteListener() {
             @Override
@@ -115,7 +104,7 @@ public class ADRewarded {
         }
     }
 
-    // MARK: - Preload + Load
+    // MARK: - Private FUNC
     void deplayCallPreload() {
         this.isRecallingPreload = true;
         this.timerRecall.start();
@@ -130,13 +119,27 @@ public class ADRewarded {
         return null;
     }
 
+    void resetAD() {
+        if (this.adUnit == null || this.amRewarded == null) return;
+
+        this.isRecallingPreload = false;
+
+        this.adUnit.stopAutoRefresh();
+        this.adUnit = null;
+
+        this.amRewarded = null;
+    }
+
     void handerResult(ResultCode resultCode) {
         if (resultCode == ResultCode.SUCCESS) {
             this.amRewarded.loadAd(this.amRequest, new RewardedAdLoadCallback() {
                 @Override
                 public void onRewardedAdLoaded() {
-                    PBMobileAds.getInstance().log("RewarededVideo load placement '" + placement + "': SUCC");
+                    PBMobileAds.getInstance().log("onRewardedAdLoaded: ADRewarded Placement '" + placement + "' Succ");
                     isFetchingAD = false;
+
+                    if (adDelegate == null) return;
+                    adDelegate.onRewardedAdLoaded("onRewardedAdLoaded: ADRewarded Placement '" + placement + "' Succ");
 
                     if (isLoadAfterPreload) {
                         isLoadAfterPreload = false;
@@ -146,15 +149,16 @@ public class ADRewarded {
 
                 @Override
                 public void onRewardedAdFailedToLoad(int errorCode) {
-                    PBMobileAds.getInstance().log("RewardedVideo load placement '" + placement + "' failed: " + errorCode);
+                    PBMobileAds.getInstance().log("onRewardedAdFailedToLoad: ADRewarded Placement '" + placement + "' failed: "+ errorCode);
                     isFetchingAD = false;
 
-                    if (!isLoadAfterPreload) deplayCallPreload();
+                    if (adDelegate == null) return;
+                    adDelegate.onRewardedAdFailedToLoad("onRewardedAdFailedToLoad: ADRewarded Placement '" + placement + "' failed: "+ errorCode);
+                    //  if (!isLoadAfterPreload) deplayCallPreload();
                 }
             });
         } else {
             if (resultCode == ResultCode.NO_BIDS) {
-                this.adFormatDefault = this.adFormatDefault.equals(ADFormat.HTML) ? ADFormat.VAST : ADFormat.HTML;
                 // Ko gọi lại preload nếu user gọi load() đầu tiên
                 if (!this.isLoadAfterPreload) this.deplayCallPreload();
             } else if (resultCode == ResultCode.TIMEOUT) {
@@ -166,62 +170,69 @@ public class ADRewarded {
         }
     }
 
+    // MARK: - Public FUNC
     public boolean preLoad() {
-        PBMobileAds.getInstance().log(" | isReady: " + this.isReady() + " |  isFetchingAD: " + this.isFetchingAD + " |  isRecallingPreload: " + this.isRecallingPreload);
+        PBMobileAds.getInstance().log("ADRewarded Placement '" + this.placement + "' - isReady: " + this.isReady() + " |  isFetchingAD: " + this.isFetchingAD + " |  isRecallingPreload: " + this.isRecallingPreload);
         if (this.adUnitObj == null || this.isReady() == true || this.isFetchingAD == true || this.isRecallingPreload == true) {
             return false;
         }
-        PBMobileAds.getInstance().log("Preload Rewareded AD: " + this.placement);
+        this.resetAD();
 
         // Check Active
         if (!this.adUnitObj.isActive || this.adUnitObj.adInfor.size() <= 0) {
-            PBMobileAds.getInstance().log("Ad is not active or not exist");
+            PBMobileAds.getInstance().log("ADRewarded Placement '" + this.placement + "' is not active or not exist");
             return false;
         }
 
         // Check and set default
-        this.adFormatDefault = this.adFormatDefault == null ? this.adUnitObj.defaultType : this.adFormatDefault;
+        this.adFormatDefault = this.adUnitObj.defaultFormat;
         // set adFormat theo loại duy nhất có
         if (adUnitObj.adInfor.size() < 2) {
             this.adFormatDefault = this.adUnitObj.adInfor.get(0).isVideo ? ADFormat.VAST : ADFormat.HTML;
         }
 
-        // Set GDPR
-        if (PBMobileAds.getInstance().gdprConfirm) {
-            TargetingParams.setSubjectToGDPR(true);
-            TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
-        }
-
-        // Set FB Token
-        String fbToken = BidderTokenProvider.getBidderToken(PBMobileAds.getInstance().getContextApp());
-        TargetingParams.addUserData("fb_token", fbToken);
-
+        // Check AdInfor
         AdInfor adInfor = this.getAdInfor(true);
         if (adInfor == null) {
-            PBMobileAds.getInstance().log("AdInfor is not exist");
+            PBMobileAds.getInstance().log("AdInfor of ADRewarded Placement '" + this.placement + "' is not exist");
             return false;
         }
 
+        PBMobileAds.getInstance().log("Preload ADRewarded Placement: " + this.placement);
+        // Set GDPR
+        if (PBMobileAds.getInstance().gdprConfirm) {
+            String consentStr = CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp());
+            if (consentStr != null && consentStr != "") {
+                TargetingParams.setSubjectToGDPR(true);
+                TargetingParams.setGDPRConsentString(CMPStorageConsentManager.getConsentString(PBMobileAds.getInstance().getContextApp()));
+            }
+        }
+
+        // Set PBS Host
         PBMobileAds.getInstance().setupPBS(adInfor.host);
-        PBMobileAds.getInstance().log("[Full Video] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
+        PBMobileAds.getInstance().log("[ADRewarded Video] - configId: " + adInfor.configId + " | adUnitID: " + adInfor.adUnitID);
 
-        VideoBaseAdUnit.Parameters parameters = new VideoBaseAdUnit.Parameters();
-        parameters.setMimes(Arrays.asList("video/mp4"));
-        parameters.setProtocols(Arrays.asList(Signals.Protocols.VAST_2_0));
-        parameters.setPlaybackMethod(Arrays.asList(Signals.PlaybackMethod.AutoPlaySoundOn));
-        parameters.setPlacement(Signals.Placement.InBanner);
+        //        VideoBaseAdUnit.Parameters parameters = new VideoBaseAdUnit.Parameters();
+        //        parameters.setMimes(Arrays.asList("video/mp4"));
+        //        parameters.setProtocols(Arrays.asList(Signals.Protocols.VAST_2_0));
+        //        parameters.setPlaybackMethod(Arrays.asList(Signals.PlaybackMethod.AutoPlaySoundOn));
+        //        parameters.setPlacement(Signals.Placement.InBanner);
+        //        RewardedVideoAdUnit rAdUnit = new RewardedVideoAdUnit(adInfor.configId);
+        //        rAdUnit.setParameters(parameters);
 
-        RewardedVideoAdUnit rAdUnit = new RewardedVideoAdUnit(adInfor.configId);
-        rAdUnit.setParameters(parameters);
-        this.adUnit = rAdUnit;
-
-        this.amRewarded = new RewardedAd(PBMobileAds.getInstance().getContextApp().getApplicationContext(), adInfor.adUnitID);
+        this.adUnit = new RewardedVideoAdUnit(adInfor.configId);;
+        this.amRewarded = new RewardedAd(PBMobileAds.getInstance().getContextApp(), adInfor.adUnitID);
 
         this.isFetchingAD = true;
+        final PublisherAdRequest.Builder builder = new PublisherAdRequest.Builder();
+        if (PBMobileAds.getInstance().isTestMode) {
+            builder.addTestDevice(Constants.DEVICE_ID_TEST);
+        }
+        this.amRequest = builder.build();
         this.adUnit.fetchDemand(this.amRequest, new OnCompleteListener() {
             @Override
             public void onComplete(ResultCode resultCode) {
-                PBMobileAds.getInstance().log("Prebid demand fetch placement '" + placement + "' for DFP: " + resultCode.name());
+                PBMobileAds.getInstance().log("Prebid demand fetch ADRewarded placement '" + placement + "' for DFP: " + resultCode.name());
                 handerResult(resultCode);
             }
         });
@@ -233,70 +244,83 @@ public class ADRewarded {
         if (this.isReady()) {
             this.show();
         } else {
-            PBMobileAds.getInstance().log("Don't have AD");
+            PBMobileAds.getInstance().log("ADRewarded Placement '" + this.placement + "' Don't have AD");
             this.isLoadAfterPreload = true;
             this.preLoad();
         }
     }
 
-    private void show() {
+    void show() {
         this.amRewarded.show(this.activityAd, new RewardedAdCallback() {
             @Override
             public void onRewardedAdOpened() {
                 isFetchingAD = false;
+
+                PBMobileAds.getInstance().log("onRewardedAdOpened: ADRewarded Placement '" + placement + "'");
                 if (adDelegate == null) return;
-                adDelegate.onRewardedAdOpened("onRewardedAdOpened");
+                adDelegate.onRewardedAdOpened("onRewardedAdOpened: ADRewarded Placement '" + placement + "'");
             }
 
             @Override
             public void onRewardedAdClosed() {
                 isFetchingAD = false;
+
+                PBMobileAds.getInstance().log("onRewardedAdClosed: ADRewarded Placement '" + placement + "'");
                 if (adDelegate == null) return;
-                adDelegate.onRewardedAdOpened("onRewardedAdClosed");
+                adDelegate.onRewardedAdClosed("onRewardedAdClosed: ADRewarded Placement '" + placement + "'");
             }
 
             @Override
             public void onUserEarnedReward(@NonNull RewardItem reward) {
                 isFetchingAD = false;
+
+                PBMobileAds.getInstance().log("onUserEarnedReward: ADRewarded Placement '" + placement + "'");
                 if (adDelegate == null) return;
-                adDelegate.onRewardedAdOpened("onUserEarnedReward");
+                adDelegate.onUserEarnedReward(reward);
             }
 
             @Override
             public void onRewardedAdFailedToShow(int errorCode) {
-                isFetchingAD = false;
-                if (adDelegate == null) return;
+                super.onRewardedAdFailedToShow(errorCode);
+
+                String messErr = "";
                 switch (errorCode) {
                     case ERROR_CODE_INTERNAL_ERROR:
-                        adDelegate.onRewardedAdOpened("INTERNAL_ERROR");
+                        messErr = "ERROR_CODE_INTERNAL_ERROR";
                         break;
                     case ERROR_CODE_AD_REUSED:
-                        adDelegate.onRewardedAdOpened("AD_REUSED");
+                        messErr = "ERROR_CODE_AD_REUSED";
                         break;
                     case ERROR_CODE_NOT_READY:
-                        adDelegate.onRewardedAdOpened("NOT_READY");
+                        messErr = "ERROR_CODE_NOT_READY";
                         break;
                     case ERROR_CODE_APP_NOT_FOREGROUND:
-                        adDelegate.onRewardedAdOpened("APP_NOT_FOREGROUND");
+                        messErr = "ERROR_CODE_APP_NOT_FOREGROUND";
                         break;
                 }
+
+                isFetchingAD = false;
+                PBMobileAds.getInstance().log("onRewardedAdFailedToShow: ADRewarded Placement '" + placement + "' with error: " + messErr);
+                if (adDelegate == null) return;
+                adDelegate.onRewardedAdFailedToShow("onRewardedAdFailedToShow: ADRewarded Placement '" + placement + "' with error: " + messErr);
             }
         });
     }
 
     public void destroy() {
-        PBMobileAds.getInstance().log("Destroy Placement: " + this.placement);
-        this.isLoadAfterPreload = false;
-        this.adUnit.stopAutoRefresh();
+        PBMobileAds.getInstance().log("Destroy ADRewarded Placement: " + this.placement);
 
-        this.timerRecall.cancel();
-        this.timerRecall = null;
+        this.resetAD();
+        if (this.timerRecall != null) {
+            this.timerRecall.cancel();
+            this.timerRecall = null;
+        }
     }
 
     public boolean isReady() {
         if (this.amRewarded == null) return false;
 
-        PBMobileAds.getInstance().log("AD IsReady: " + this.amRewarded.isLoaded());
+        PBMobileAds.getInstance().log("ADRewarded Placement '" + this.placement + "' IsReady: " + this.amRewarded.isLoaded());
 
         return this.amRewarded.isLoaded();
     }

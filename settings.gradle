@@ -1,4 +1,3 @@
-include ':AudienceNetwork'
 rootProject.name='BilMobileAdsAndroid'
 include ':app'
 include ':bilmobileads'
