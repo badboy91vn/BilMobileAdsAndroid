@@ -2,6 +2,7 @@
 package com.bil.bilmobileads;
 
 import android.content.Context;
+import android.content.res.Resources;
 import android.util.Log;
 import android.webkit.WebView;
 
