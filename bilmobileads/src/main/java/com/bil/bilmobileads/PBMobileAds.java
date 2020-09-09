@@ -62,8 +62,16 @@ public class PBMobileAds {
         // Declare in init to the user agent could be passed in first call
         PrebidMobile.setShareGeoLocation(true);
         PrebidMobile.setApplicationContext(context.getApplicationContext());
-        WebView webView = new WebView(context);
-        if (webView != null) webView.clearCache(true);
+        WebView webView;
+        try {
+            webView = new WebView(context);
+            if (webView != null) webView.clearCache(true);
+        } catch (Resources.NotFoundException e) {
+            // Some older devices can crash when instantiating a WebView, due to a Resources$NotFoundException
+            // Creating with the application Context fixes this, but is not generally recommended for view creation
+            webView = new WebView(context.getApplicationContext());
+            if (webView != null) webView.clearCache(true);
+        }
     }
 
     public Context getContextApp() {
